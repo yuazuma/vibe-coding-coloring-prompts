@@ -1,0 +1,468 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyberpunk ToDo</title>
+    <!-- Tailwind CSS (ユーティリティクラス用) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome (アイコン用) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Orbitron (近未来的なフォント) -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- カスタムテーマ設定 --- */
+        :root {
+            --bg-color: #050505;
+            --panel-bg: rgba(20, 20, 30, 0.7);
+            --neon-cyan: #00f3ff;
+            --neon-magenta: #ff00ff;
+            --text-main: #e0e0e0;
+            --text-dim: #707070;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(20, 20, 40, 0.5) 0%, transparent 100%),
+                repeating-linear-gradient(0deg, transparent, transparent 1px, #000 1px, #000 2px);
+            background-size: cover, 100% 4px; /* スキャンライン効果 */
+            color: var(--text-main);
+            font-family: 'Share Tech Mono', monospace;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* スクロールバーのカスタマイズ */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border: 1px solid var(--neon-cyan);
+        }
+
+        /* --- ネオン効果 --- */
+        .neon-text-cyan {
+            color: var(--neon-cyan);
+            text-shadow: 0 0 5px var(--neon-cyan), 0 0 10px var(--neon-cyan);
+        }
+        .neon-text-magenta {
+            color: var(--neon-magenta);
+            text-shadow: 0 0 5px var(--neon-magenta), 0 0 10px var(--neon-magenta);
+        }
+        .neon-border-cyan {
+            border: 1px solid var(--neon-cyan);
+            box-shadow: 0 0 5px var(--neon-cyan), inset 0 0 5px rgba(0, 243, 255, 0.2);
+        }
+        .neon-border-magenta {
+            border: 1px solid var(--neon-magenta);
+            box-shadow: 0 0 5px var(--neon-magenta), inset 0 0 5px rgba(255, 0, 255, 0.2);
+        }
+
+        /* --- グラスモーフィズムパネル --- */
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* --- アニメーション --- */
+        @keyframes flicker {
+            0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; }
+            20%, 24%, 55% { opacity: 0.5; }
+        }
+        .flicker-anim {
+            animation: flicker 4s infinite alternate;
+        }
+
+        /* --- ToDo アイテムスタイル --- */
+        .todo-item {
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+        .todo-item:hover {
+            background: rgba(0, 243, 255, 0.05);
+            border-left: 3px solid var(--neon-cyan);
+        }
+        .todo-item.completed {
+            opacity: 0.5;
+            text-decoration: line-through;
+            border-left: 3px solid var(--text-dim);
+        }
+        .todo-item.completed .todo-text {
+            color: var(--text-dim);
+        }
+
+        /* カスタムチェックボックス */
+        .custom-checkbox {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--neon-cyan);
+            background: transparent;
+            cursor: pointer;
+            position: relative;
+            display: grid;
+            place-content: center;
+        }
+        .custom-checkbox::before {
+            content: "";
+            width: 10px;
+            height: 10px;
+            transform: scale(0);
+            transition: 120ms transform ease-in-out;
+            box-shadow: inset 1em 1em var(--neon-cyan);
+            background-color: var(--neon-cyan);
+        }
+        .custom-checkbox:checked::before {
+            transform: scale(1);
+        }
+
+        /* 入力フィールドのアニメーション */
+        .cyber-input:focus {
+            outline: none;
+            border-bottom-color: var(--neon-magenta);
+            box-shadow: 0 4px 6px -6px var(--neon-magenta);
+        }
+
+        /* エラー通知 */
+        #error-container {
+            transform: translateY(-100%);
+            transition: transform 0.3s ease-in-out;
+        }
+        #error-container.show {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-start pt-10 px-4">
+
+    <!-- エラー通知バー -->
+    <div id="error-container" class="fixed top-0 left-0 w-full bg-red-900 border-b border-red-500 z-50 p-4 flex items-center justify-center shadow-lg text-white font-bold">
+        <i class="fas fa-exclamation-triangle mr-3 animate-pulse"></i>
+        <span id="error-message">SYSTEM ERROR: Data sync failed.</span>
+    </div>
+
+    <!-- メインコンテナ -->
+    <div class="w-full max-w-2xl glass-panel p-6 rounded-lg shadow-2xl relative overflow-hidden neon-border-cyan">
+        <!-- 装飾的なコーナー -->
+        <div class="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-white opacity-50"></div>
+        <div class="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-white opacity-50"></div>
+        <div class="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-white opacity-50"></div>
+        <div class="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-white opacity-50"></div>
+
+        <!-- タイトルエリア -->
+        <header class="mb-8 text-center relative">
+            <h1 class="text-4xl md:text-5xl font-bold font-['Orbitron'] tracking-widest uppercase neon-text-cyan flicker-anim">
+                CYBER<span class="text-white">TODO</span>
+            </h1>
+            <p class="text-xs text-cyan-300 mt-2 tracking-[0.5em] opacity-80">SYSTEM_READY</p>
+        </header>
+
+        <!-- 入力エリア -->
+        <div class="mb-8 flex flex-col md:flex-row gap-4">
+            <div class="relative flex-grow group">
+                <input type="text" id="new-todo-input" 
+                    class="w-full bg-transparent border-b-2 border-cyan-700 py-2 px-4 text-lg text-white cyber-input transition-colors placeholder-gray-600 font-['Share_Tech_Mono']"
+                    placeholder="ENTER_TASK_PROTOCOL...">
+                <div class="absolute bottom-0 left-0 h-0.5 w-0 bg-magenta-500 transition-all duration-300 group-hover:w-full"></div>
+            </div>
+            <button id="add-btn" 
+                class="px-6 py-2 bg-transparent border border-cyan-500 text-cyan-400 font-bold hover:bg-cyan-500 hover:text-black transition-all duration-300 uppercase tracking-wider shadow-[0_0_10px_rgba(0,243,255,0.3)] hover:shadow-[0_0_20px_rgba(0,243,255,0.6)]">
+                <i class="fas fa-plus mr-2"></i>ADD
+            </button>
+        </div>
+
+        <!-- フィルターコントロール -->
+        <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-2">
+            <span class="text-xs text-gray-500 uppercase tracking-widest">Tasks Filter</span>
+            <div class="flex gap-2">
+                <button onclick="app.setFilter('all')" id="filter-all" class="text-xs px-3 py-1 border border-cyan-500 bg-cyan-900/30 text-cyan-300 active-filter transition-all">ALL</button>
+                <button onclick="app.setFilter('active')" id="filter-active" class="text-xs px-3 py-1 border border-gray-700 text-gray-500 hover:text-cyan-300 transition-all">ACTIVE_ONLY</button>
+            </div>
+        </div>
+
+        <!-- ToDoリスト -->
+        <ul id="todo-list" class="space-y-3 min-h-[300px]">
+            <!-- JSでここにリストアイテムが挿入されます -->
+        </ul>
+
+        <!-- フッター -->
+        <div class="mt-6 pt-4 border-t border-gray-800 flex justify-between items-end text-xs text-gray-600">
+            <div>STATUS: <span class="text-green-500">ONLINE</span></div>
+            <div class="font-['Orbitron']">VER 2.0.77</div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * ToDoアプリケーションクラス
+         * 機能: 追加、削除、編集、完了切り替え、フィルタリング
+         */
+        class CyberTodoApp {
+            constructor() {
+                this.todos = [];
+                this.filter = 'all'; // 'all' or 'active'
+                
+                // DOM要素のキャッシュ
+                this.todoListEl = document.getElementById('todo-list');
+                this.inputEl = document.getElementById('new-todo-input');
+                this.addBtnEl = document.getElementById('add-btn');
+                this.filterAllBtn = document.getElementById('filter-all');
+                this.filterActiveBtn = document.getElementById('filter-active');
+                this.errorContainer = document.getElementById('error-container');
+                this.errorMessage = document.getElementById('error-message');
+
+                this.init();
+            }
+
+            /**
+             * アプリケーションの初期化
+             */
+            init() {
+                // イベントリスナーの設定
+                this.addBtnEl.addEventListener('click', () => this.addTodo());
+                this.inputEl.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.addTodo();
+                });
+
+                // ダミーデータの読み込み
+                this.loadDummyData();
+                
+                // 初回レンダリング
+                this.render();
+            }
+
+            /**
+             * ダミーデータを生成
+             */
+            loadDummyData() {
+                try {
+                    this.todos = [
+                        { id: crypto.randomUUID(), text: "ニューロリンクのファームウェア更新", completed: false },
+                        { id: crypto.randomUUID(), text: "闇市場で冷却パーツを調達", completed: true },
+                        { id: crypto.randomUUID(), text: "セクター7のセキュリティログ解析", completed: false },
+                        { id: crypto.randomUUID(), text: "AIコンパニオンのデバッグ", completed: false },
+                        { id: crypto.randomUUID(), text: "暗号通貨ウォレットのバックアップ", completed: true }
+                    ];
+                } catch (e) {
+                    this.showError("DATA_INIT_FAILURE: 初期データの生成に失敗しました。");
+                }
+            }
+
+            /**
+             * 新規ToDoの追加
+             */
+            addTodo() {
+                const text = this.inputEl.value.trim();
+                
+                if (!text) {
+                    this.inputEl.classList.add('border-red-500');
+                    setTimeout(() => this.inputEl.classList.remove('border-red-500'), 1000);
+                    return;
+                }
+
+                try {
+                    const newTodo = {
+                        id: crypto.randomUUID(),
+                        text: text,
+                        completed: false
+                    };
+
+                    this.todos.unshift(newTodo); // リストの先頭に追加
+                    this.inputEl.value = '';
+                    this.render();
+                    
+                    // 成功音の代わりにコンソールログ（あるいはUIフィードバック）
+                    console.log(`Task Added: ${newTodo.id}`);
+                } catch (e) {
+                    this.showError("WRITE_ERROR: データの書き込みに失敗しました。");
+                }
+            }
+
+            /**
+             * ToDoの削除
+             */
+            deleteTodo(id) {
+                if(confirm("WARNING: このデータを完全に削除しますか？")) {
+                    try {
+                        this.todos = this.todos.filter(todo => todo.id !== id);
+                        this.render();
+                    } catch (e) {
+                        this.showError("DELETE_ERROR: データの削除中にエラーが発生しました。");
+                    }
+                }
+            }
+
+            /**
+             * 完了状態の切り替え
+             */
+            toggleComplete(id) {
+                try {
+                    const todo = this.todos.find(t => t.id === id);
+                    if (todo) {
+                        todo.completed = !todo.completed;
+                        this.render();
+                    }
+                } catch (e) {
+                    this.showError("UPDATE_ERROR: ステータスの更新に失敗しました。");
+                }
+            }
+
+            /**
+             * 編集モードの開始
+             */
+            startEditing(id, textSpan) {
+                const todo = this.todos.find(t => t.id === id);
+                if (!todo || todo.completed) return; // 完了済みは編集不可とする場合
+
+                // 既存のテキストをinput要素に置換
+                const currentText = todo.text;
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = currentText;
+                input.className = 'bg-gray-900 text-cyan-400 border border-cyan-500 px-2 py-1 w-full outline-none';
+                
+                // input内のクリックイベントが親（li）に伝播しないようにする
+                input.onclick = (e) => e.stopPropagation();
+
+                // 保存処理
+                const save = () => {
+                    const newText = input.value.trim();
+                    if (newText) {
+                        todo.text = newText;
+                        this.render();
+                    } else {
+                        // 空の場合は元のテキストに戻す（あるいは削除するかは要件次第だが、ここでは元に戻す）
+                        this.render();
+                    }
+                };
+
+                input.addEventListener('blur', save);
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        input.blur(); // blurイベントを発火させて保存
+                    }
+                });
+
+                textSpan.replaceWith(input);
+                input.focus();
+            }
+
+            /**
+             * フィルター設定の変更
+             */
+            setFilter(type) {
+                this.filter = type;
+                
+                // ボタンのスタイル更新
+                if (type === 'all') {
+                    this.filterAllBtn.className = "text-xs px-3 py-1 border border-cyan-500 bg-cyan-900/30 text-cyan-300 transition-all";
+                    this.filterActiveBtn.className = "text-xs px-3 py-1 border border-gray-700 text-gray-500 hover:text-cyan-300 transition-all";
+                } else {
+                    this.filterAllBtn.className = "text-xs px-3 py-1 border border-gray-700 text-gray-500 hover:text-cyan-300 transition-all";
+                    this.filterActiveBtn.className = "text-xs px-3 py-1 border border-magenta-500 bg-magenta-900/30 text-magenta-300 transition-all";
+                }
+
+                this.render();
+            }
+
+            /**
+             * エラーメッセージの表示（3秒後に消える）
+             */
+            showError(msg) {
+                this.errorMessage.textContent = msg;
+                this.errorContainer.classList.add('show');
+                setTimeout(() => {
+                    this.errorContainer.classList.remove('show');
+                }, 3000);
+            }
+
+            /**
+             * 画面描画
+             */
+            render() {
+                this.todoListEl.innerHTML = '';
+
+                // フィルタリング
+                const filteredTodos = this.todos.filter(todo => {
+                    if (this.filter === 'active') return !todo.completed;
+                    return true;
+                });
+
+                if (filteredTodos.length === 0) {
+                    this.todoListEl.innerHTML = `
+                        <li class="text-center text-gray-600 py-8 font-['Orbitron'] tracking-widest">
+                            NO_DATA_FOUND
+                        </li>`;
+                    return;
+                }
+
+                filteredTodos.forEach(todo => {
+                    const li = document.createElement('li');
+                    li.className = `todo-item flex items-center justify-between p-3 bg-gray-900/50 mb-2 border-b border-gray-800 ${todo.completed ? 'completed' : ''}`;
+                    
+                    // HTML構造の構築
+                    li.innerHTML = `
+                        <div class="flex items-center flex-grow mr-4 overflow-hidden">
+                            <input type="checkbox" class="custom-checkbox flex-shrink-0 mr-4" 
+                                ${todo.completed ? 'checked' : ''}>
+                            <span class="todo-text truncate cursor-pointer select-none text-sm md:text-base hover:text-cyan-200" title="Click to edit">
+                                ${this.escapeHtml(todo.text)}
+                            </span>
+                        </div>
+                        <button class="delete-btn text-gray-600 hover:text-red-500 transition-colors p-2" title="Delete">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    `;
+
+                    // イベントリスナーの登録（innerHTML後の要素取得）
+                    const checkbox = li.querySelector('input[type="checkbox"]');
+                    const textSpan = li.querySelector('.todo-text');
+                    const deleteBtn = li.querySelector('.delete-btn');
+
+                    checkbox.addEventListener('change', () => this.toggleComplete(todo.id));
+                    
+                    // 編集モードへの移行（完了済みでない場合のみ）
+                    if (!todo.completed) {
+                        textSpan.addEventListener('click', () => this.startEditing(todo.id, textSpan));
+                    }
+
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation(); // 親要素への伝播防止
+                        this.deleteTodo(todo.id);
+                    });
+
+                    this.todoListEl.appendChild(li);
+                });
+            }
+
+            /**
+             * XSS対策用エスケープ処理
+             */
+            escapeHtml(str) {
+                if (!str) return '';
+                return str.replace(/[&<>"']/g, function(m) {
+                    return {
+                        '&': '&amp;',
+                        '<': '&lt;',
+                        '>': '&gt;',
+                        '"': '&quot;',
+                        "'": '&#039;'
+                    }[m];
+                });
+            }
+        }
+
+        // アプリケーションの起動
+        document.addEventListener('DOMContentLoaded', () => {
+            window.app = new CyberTodoApp();
+        });
+    </script>
+</body>
+</html>

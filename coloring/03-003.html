@@ -1,0 +1,445 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAFETY FIRST ToDo | 現場管理</title>
+    <!-- Tailwind CSS (Utility classes) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome (Icons) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- カスタムテーマ定義 --- */
+        :root {
+            --safety-yellow: #FFD700;
+            --safety-black: #111111;
+            --safety-dark-gray: #2d2d2d;
+            --danger-red: #ff4444;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: var(--safety-dark-gray);
+            color: #ffffff;
+            background-image: radial-gradient(#3d3d3d 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        /* 建設現場風の警戒ストライプ */
+        .hazard-stripe {
+            background: repeating-linear-gradient(
+                45deg,
+                var(--safety-black),
+                var(--safety-black) 10px,
+                var(--safety-yellow) 10px,
+                var(--safety-yellow) 20px
+            );
+        }
+
+        .hazard-stripe-sm {
+             background: repeating-linear-gradient(
+                45deg,
+                var(--safety-black),
+                var(--safety-black) 5px,
+                var(--safety-yellow) 5px,
+                var(--safety-yellow) 10px
+            );
+        }
+
+        /* タイトルフォント */
+        .industrial-font {
+            font-family: 'Black Ops One', cursive;
+            letter-spacing: 2px;
+        }
+
+        /* カスタムスクロールバー */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--safety-black);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--safety-yellow);
+        }
+
+        /* インタラクション */
+        .todo-item {
+            transition: all 0.2s ease;
+            border-left: 4px solid var(--safety-yellow);
+        }
+        .todo-item:hover {
+            transform: translateX(4px);
+            background-color: #383838;
+        }
+        .todo-item.completed {
+            border-left: 4px solid #555;
+            opacity: 0.6;
+            text-decoration: line-through;
+            color: #aaa;
+        }
+
+        /* アニメーション */
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-in {
+            animation: slideIn 0.3s ease-out forwards;
+        }
+
+        /* エラートースト */
+        #error-toast {
+            transform: translateY(-150%);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #error-toast.show {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center py-8 px-4">
+
+    <!-- ヘッダーエリア -->
+    <header class="w-full max-w-2xl mb-8 border-4 border-yellow-400 bg-gray-900 shadow-2xl relative overflow-hidden">
+        <div class="h-4 hazard-stripe w-full absolute top-0 left-0"></div>
+        <div class="p-6 text-center mt-4">
+            <h1 class="text-4xl md:text-5xl text-yellow-400 industrial-font uppercase mb-2">
+                <i class="fas fa-hard-hat mr-2"></i>Project ToDo
+            </h1>
+            <p class="text-gray-400 font-bold tracking-widest text-sm md:text-base">
+                SAFETY FIRST / 安全第一
+            </p>
+        </div>
+        <div class="h-4 hazard-stripe w-full absolute bottom-0 left-0"></div>
+    </header>
+
+    <!-- エラー通知 (トースト) -->
+    <div id="error-toast" class="fixed top-4 left-0 right-0 mx-auto w-11/12 max-w-md bg-red-600 text-white p-4 rounded shadow-2xl border-2 border-white z-50 flex items-center gap-3">
+        <i class="fas fa-exclamation-triangle text-2xl"></i>
+        <div>
+            <h4 class="font-bold uppercase">System Alert</h4>
+            <p id="error-message" class="text-sm">エラーが発生しました。</p>
+        </div>
+    </div>
+
+    <!-- メインアプリケーションエリア -->
+    <main class="w-full max-w-2xl bg-gray-800 border-2 border-gray-600 shadow-xl rounded-lg overflow-hidden">
+        
+        <!-- コントロールパネル -->
+        <div class="p-6 bg-gray-900 border-b-2 border-gray-600">
+            <!-- 入力フォーム -->
+            <div class="flex flex-col sm:flex-row gap-2 mb-6">
+                <input type="text" id="todo-input" 
+                    class="flex-1 bg-gray-800 border-2 border-gray-600 text-white px-4 py-3 focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 placeholder-gray-500 font-bold"
+                    placeholder="作業項目を入力してください...">
+                <button onclick="app.addTodo()" 
+                    class="bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-6 py-3 uppercase tracking-wider transition-colors flex items-center justify-center gap-2">
+                    <i class="fas fa-plus"></i> 追加
+                </button>
+            </div>
+
+            <!-- フィルター -->
+            <div class="flex justify-between items-center">
+                <div class="text-gray-400 text-sm font-bold">
+                    <i class="fas fa-list-ul mr-1"></i> STATUS
+                </div>
+                <div class="flex gap-2 bg-gray-800 p-1 rounded border border-gray-700">
+                    <button onclick="app.setFilter('all')" id="filter-all" class="px-3 py-1 text-xs font-bold rounded bg-yellow-500 text-black transition-all">
+                        全て
+                    </button>
+                    <button onclick="app.setFilter('active')" id="filter-active" class="px-3 py-1 text-xs font-bold rounded text-gray-400 hover:text-white transition-all">
+                        未完了のみ
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- タスクリスト -->
+        <div class="p-0">
+            <ul id="todo-list" class="divide-y divide-gray-700 min-h-[200px]">
+                <!-- JavaScriptでここにリストが描画されます -->
+            </ul>
+            <div id="empty-state" class="hidden py-12 text-center text-gray-500">
+                <i class="fas fa-clipboard-check text-4xl mb-3"></i>
+                <p>現在タスクはありません。</p>
+            </div>
+        </div>
+        
+        <!-- フッター -->
+        <div class="bg-gray-900 p-2 text-center text-xs text-gray-600 border-t border-gray-700">
+            SYSTEM STATUS: ONLINE
+        </div>
+    </main>
+
+    <script>
+        /**
+         * アプリケーションロジック
+         */
+        const app = {
+            data: [],
+            filter: 'all', // 'all' or 'active'
+            
+            // 初期ダミーデータ
+            dummyData: [
+                { id: 1, text: '朝礼・KY活動（危険予知）の実施', completed: true },
+                { id: 2, text: '足場組立後の安全点検', completed: false },
+                { id: 3, text: '搬入資材の数量確認と配置', completed: false },
+                { id: 4, text: '第3工区の配線図面修正', completed: false },
+                { id: 5, text: '重機稼働エリアのバリケード設置', completed: true }
+            ],
+
+            /**
+             * 初期化処理
+             */
+            init() {
+                try {
+                    const storedData = localStorage.getItem('safetyTodoData');
+                    if (storedData) {
+                        this.data = JSON.parse(storedData);
+                    } else {
+                        // 初回起動時はダミーデータをロード
+                        this.data = [...this.dummyData];
+                        this.save();
+                    }
+                    this.render();
+                } catch (e) {
+                    this.showError('データの読み込みに失敗しました。ローカルストレージを確認してください。');
+                }
+            },
+
+            /**
+             * データを保存 (localStorage)
+             */
+            save() {
+                try {
+                    localStorage.setItem('safetyTodoData', JSON.stringify(this.data));
+                } catch (e) {
+                    this.showError('データの保存に失敗しました。容量が一杯の可能性があります。');
+                    console.error(e);
+                }
+            },
+
+            /**
+             * ToDo追加
+             */
+            addTodo() {
+                const input = document.getElementById('todo-input');
+                const text = input.value.trim();
+
+                if (!text) return;
+
+                try {
+                    const newTodo = {
+                        id: Date.now(),
+                        text: text,
+                        completed: false
+                    };
+
+                    this.data.unshift(newTodo); // リストの先頭に追加
+                    this.save();
+                    this.render();
+                    input.value = '';
+                } catch (e) {
+                    this.showError('タスクの追加に失敗しました。');
+                }
+            },
+
+            /**
+             * 完了状態の切り替え
+             */
+            toggleComplete(id) {
+                try {
+                    const todo = this.data.find(t => t.id === id);
+                    if (todo) {
+                        todo.completed = !todo.completed;
+                        this.save();
+                        this.render();
+                    }
+                } catch (e) {
+                    this.showError('ステータスの更新に失敗しました。');
+                }
+            },
+
+            /**
+             * 削除
+             */
+            deleteTodo(id) {
+                if (!confirm('この作業項目を削除しますか？')) return;
+
+                try {
+                    this.data = this.data.filter(t => t.id !== id);
+                    this.save();
+                    this.render();
+                } catch (e) {
+                    this.showError('削除処理に失敗しました。');
+                }
+            },
+
+            /**
+             * 編集モード開始
+             */
+            editMode(id) {
+                const item = this.data.find(t => t.id === id);
+                if(!item) return;
+
+                const li = document.getElementById(`item-${id}`);
+                const textSpan = li.querySelector('.todo-text');
+                
+                // 既にinputなら何もしない
+                if(textSpan.querySelector('input')) return;
+
+                const currentText = textSpan.innerText;
+                
+                // Input要素に置換
+                textSpan.innerHTML = `
+                    <input type="text" 
+                           id="edit-input-${id}"
+                           class="w-full bg-gray-700 text-white border border-yellow-500 px-2 py-1 outline-none"
+                           value="${currentText}">
+                `;
+
+                const input = document.getElementById(`edit-input-${id}`);
+                input.focus();
+
+                // フォーカスが外れたら保存
+                input.addEventListener('blur', () => this.saveEdit(id, input.value));
+                
+                // Enterキーで保存
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.saveEdit(id, input.value);
+                    }
+                });
+            },
+
+            /**
+             * 編集の保存
+             */
+            saveEdit(id, newText) {
+                try {
+                    const todo = this.data.find(t => t.id === id);
+                    if (todo && newText.trim() !== "") {
+                        todo.text = newText.trim();
+                        this.save();
+                    }
+                    // 保存後に再描画してInputをテキストに戻す
+                    this.render();
+                } catch (e) {
+                    this.showError('編集の保存に失敗しました。');
+                    this.render(); // 元に戻す
+                }
+            },
+
+            /**
+             * フィルター設定
+             */
+            setFilter(type) {
+                this.filter = type;
+                
+                // UI更新
+                const btnAll = document.getElementById('filter-all');
+                const btnActive = document.getElementById('filter-active');
+                
+                if (type === 'all') {
+                    btnAll.className = "px-3 py-1 text-xs font-bold rounded bg-yellow-500 text-black transition-all";
+                    btnActive.className = "px-3 py-1 text-xs font-bold rounded text-gray-400 hover:text-white transition-all";
+                } else {
+                    btnAll.className = "px-3 py-1 text-xs font-bold rounded text-gray-400 hover:text-white transition-all";
+                    btnActive.className = "px-3 py-1 text-xs font-bold rounded bg-yellow-500 text-black transition-all";
+                }
+
+                this.render();
+            },
+
+            /**
+             * エラー表示 (トースト)
+             */
+            showError(msg) {
+                const toast = document.getElementById('error-toast');
+                const msgEl = document.getElementById('error-message');
+                msgEl.innerText = msg;
+                toast.classList.add('show');
+                
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            },
+
+            /**
+             * 描画処理
+             */
+            render() {
+                const list = document.getElementById('todo-list');
+                const emptyState = document.getElementById('empty-state');
+                list.innerHTML = '';
+
+                // フィルタリング
+                const filteredData = this.data.filter(item => {
+                    if (this.filter === 'active') return !item.completed;
+                    return true;
+                });
+
+                if (filteredData.length === 0) {
+                    emptyState.classList.remove('hidden');
+                } else {
+                    emptyState.classList.add('hidden');
+                }
+
+                filteredData.forEach(item => {
+                    const li = document.createElement('li');
+                    li.id = `item-${item.id}`;
+                    li.className = `todo-item p-4 bg-gray-800 flex items-center justify-between group animate-slide-in ${item.completed ? 'completed' : ''}`;
+                    
+                    li.innerHTML = `
+                        <div class="flex items-center flex-1 gap-4">
+                            <button onclick="app.toggleComplete(${item.id})" class="text-2xl focus:outline-none transition-colors ${item.completed ? 'text-gray-500' : 'text-yellow-500 hover:text-yellow-400'}">
+                                <i class="${item.completed ? 'fas fa-check-square' : 'far fa-square'}"></i>
+                            </button>
+                            <span class="todo-text font-medium text-lg cursor-pointer flex-1" onclick="app.editMode(${item.id})" title="クリックして編集">
+                                ${this.escapeHtml(item.text)}
+                            </span>
+                        </div>
+                        <button onclick="app.deleteTodo(${item.id})" class="ml-4 text-gray-600 hover:text-red-500 transition-colors p-2 focus:outline-none opacity-100 md:opacity-0 group-hover:opacity-100" title="削除">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    `;
+                    
+                    list.appendChild(li);
+                });
+            },
+
+            /**
+             * XSS対策用エスケープ
+             */
+            escapeHtml(str) {
+                if (!str) return '';
+                return str.replace(/[&<>"']/g, function(m) {
+                    return {
+                        '&': '&amp;',
+                        '<': '&lt;',
+                        '>': '&gt;',
+                        '"': '&quot;',
+                        "'": '&#039;'
+                    }[m];
+                });
+            }
+        };
+
+        // アプリケーション開始
+        window.addEventListener('DOMContentLoaded', () => {
+            app.init();
+            
+            // Enterキーでの追加サポート
+            document.getElementById('todo-input').addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    app.addTodo();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,464 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADRENALINE TODO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Teko:wght@400;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'adren-red': '#FF003C',
+                        'adren-black': '#050505',
+                        'adren-dark': '#111111',
+                        'adren-gray': '#2A2A2A',
+                    },
+                    fontFamily: {
+                        'display': ['Teko', 'sans-serif'],
+                        'body': ['sans-serif'],
+                    },
+                    boxShadow: {
+                        'neon': '0 0 10px #FF003C, 0 0 20px #FF003C',
+                        'neon-sm': '0 0 5px #FF003C',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #050505;
+            background-image: linear-gradient(45deg, #0a0a0a 25%, transparent 25%, transparent 75%, #0a0a0a 75%, #0a0a0a), 
+                              linear-gradient(45deg, #0a0a0a 25%, transparent 25%, transparent 75%, #0a0a0a 75%, #0a0a0a);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+        }
+
+        /* スクロールバーのカスタマイズ */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #FF003C; 
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #cc0030; 
+        }
+
+        /* スピード感を出すための傾斜ユーティリティ */
+        .skew-box {
+            transform: skewX(-15deg);
+        }
+        .unskew-content {
+            transform: skewX(15deg);
+        }
+
+        .glitch-effect {
+            position: relative;
+        }
+        
+        /* 完了時の取り消し線アニメーション */
+        .strike-through {
+            position: relative;
+            opacity: 0.5;
+            transition: opacity 0.3s;
+        }
+        .strike-through::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: #FF003C;
+            box-shadow: 0 0 5px #FF003C;
+        }
+
+        /* アニメーション */
+        @keyframes slideIn {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .todo-item-enter {
+            animation: slideIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="text-white min-h-screen flex flex-col items-center pt-8 pb-8 px-4 font-body selection:bg-adren-red selection:text-black">
+
+    <!-- エラー通知バー (固定表示、JSで制御) -->
+    <div id="error-container" class="fixed top-0 left-0 w-full z-50 pointer-events-none flex justify-center pt-4"></div>
+
+    <!-- メインコンテナ -->
+    <main class="w-full max-w-2xl relative">
+        
+        <!-- 背景装飾 -->
+        <div class="absolute -top-10 -right-10 w-64 h-64 bg-adren-red opacity-5 rounded-full blur-3xl -z-10"></div>
+        <div class="absolute top-40 -left-20 w-48 h-48 bg-adren-red opacity-5 rounded-full blur-3xl -z-10"></div>
+
+        <!-- ヘッダーエリア -->
+        <header class="mb-8 text-center sm:text-left sm:flex sm:justify-between sm:items-end border-b-2 border-adren-red pb-4">
+            <div>
+                <h1 class="text-6xl font-display font-bold tracking-wider text-white italic drop-shadow-[2px_2px_0_#FF003C]">
+                    PROJECT <span class="text-adren-red">ZERO</span>
+                </h1>
+                <p class="text-gray-400 text-sm tracking-widest uppercase mt-1">High Performance Task Management</p>
+            </div>
+            <div class="mt-4 sm:mt-0 font-display text-xl">
+                <span id="task-count" class="text-adren-red font-bold text-3xl">0</span> TASKS REMAINING
+            </div>
+        </header>
+
+        <!-- 入力フォーム -->
+        <div class="mb-8 relative group">
+            <div class="absolute -inset-0.5 bg-adren-red opacity-75 blur transition duration-200 group-hover:opacity-100 animate-pulse"></div>
+            <div class="relative flex items-center bg-adren-black border border-adren-red skew-box overflow-hidden">
+                <input type="text" id="todo-input" 
+                    class="unskew-content w-full bg-transparent text-white px-6 py-4 text-lg focus:outline-none placeholder-gray-600 font-bold tracking-wide uppercase"
+                    placeholder="ENTER NEW MISSION OBJECTIVE..." 
+                    autocomplete="off">
+                <button id="add-btn" 
+                    class="unskew-content h-full bg-adren-red text-black px-8 py-4 font-display font-bold text-xl hover:bg-white hover:text-adren-red transition-colors duration-200 tracking-wider">
+                    ADD
+                </button>
+            </div>
+        </div>
+
+        <!-- フィルターコントロール -->
+        <div class="flex space-x-4 mb-6 font-display tracking-widest text-lg">
+            <button id="filter-all" class="skew-box px-6 py-1 border border-adren-red bg-adren-red text-black transition-all hover:shadow-neon filter-btn active">
+                <span class="unskew-content block font-bold">ALL TARGETS</span>
+            </button>
+            <button id="filter-incomplete" class="skew-box px-6 py-1 border border-adren-gray text-gray-400 hover:border-adren-red hover:text-white transition-all filter-btn">
+                <span class="unskew-content block font-bold">ACTIVE ONLY</span>
+            </button>
+        </div>
+
+        <!-- ToDoリスト -->
+        <ul id="todo-list" class="space-y-3">
+            <!-- JavaScriptでここにアイテムが描画されます -->
+        </ul>
+
+    </main>
+
+    <script>
+        // === アプリケーションの状態 ===
+        const state = {
+            todos: [],
+            filter: 'all', // 'all' or 'incomplete'
+            editingId: null
+        };
+
+        // === DOM要素 ===
+        const elements = {
+            input: document.getElementById('todo-input'),
+            addBtn: document.getElementById('add-btn'),
+            list: document.getElementById('todo-list'),
+            taskCount: document.getElementById('task-count'),
+            filterAll: document.getElementById('filter-all'),
+            filterIncomplete: document.getElementById('filter-incomplete'),
+            errorContainer: document.getElementById('error-container')
+        };
+
+        // === 初期化処理 ===
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDummyData();
+            render();
+            setupEventListeners();
+        });
+
+        // === データ操作ロジック ===
+
+        // ダミーデータの読み込み
+        function loadDummyData() {
+            // ローカルストレージがあればそこから、なければ初期データ
+            try {
+                const saved = localStorage.getItem('adrenaline_todos');
+                if (saved) {
+                    state.todos = JSON.parse(saved);
+                } else {
+                    state.todos = [
+                        { id: crypto.randomUUID(), text: '緊急サーバーメンテナンスを実行', completed: false },
+                        { id: crypto.randomUUID(), text: 'フロントエンドのパフォーマンス最適化', completed: true },
+                        { id: crypto.randomUUID(), text: '競合製品の市場分析レポート作成', completed: false },
+                        { id: crypto.randomUUID(), text: 'チームミーティング資料の準備', completed: false },
+                        { id: crypto.randomUUID(), text: 'デプロイパイプラインの修正', completed: true },
+                    ];
+                    saveData();
+                }
+            } catch (e) {
+                showError('データベース接続エラー: 初期化データの読み込みに失敗しました');
+                // フォールバック
+                state.todos = [];
+            }
+        }
+
+        function saveData() {
+            try {
+                localStorage.setItem('adrenaline_todos', JSON.stringify(state.todos));
+            } catch (e) {
+                showError('システム警告: データの永続化に失敗しました');
+            }
+        }
+
+        function addTodo(text) {
+            if (!text.trim()) {
+                showError('エラー: 空のタスクは許可されていません');
+                return;
+            }
+            
+            const newTodo = {
+                id: crypto.randomUUID(),
+                text: text.trim(),
+                completed: false
+            };
+            
+            state.todos.unshift(newTodo);
+            saveData();
+            render();
+            elements.input.value = '';
+        }
+
+        function toggleTodo(id) {
+            const todo = state.todos.find(t => t.id === id);
+            if (todo) {
+                todo.completed = !todo.completed;
+                saveData();
+                render();
+            } else {
+                showError('エラー: 対象のタスクが見つかりません');
+            }
+        }
+
+        function deleteTodo(id) {
+            if(confirm('警告: このタスクを完全に削除しますか？')) {
+                const initialLength = state.todos.length;
+                state.todos = state.todos.filter(t => t.id !== id);
+                
+                if (state.todos.length === initialLength) {
+                    showError('削除エラー: オブジェクトの削除に失敗しました');
+                } else {
+                    saveData();
+                    render();
+                }
+            }
+        }
+
+        function startEditing(id) {
+            const todo = state.todos.find(t => t.id === id);
+            if (!todo) return;
+            if (todo.completed) {
+                showError('アクセス拒否: 完了済みタスクは編集できません');
+                return;
+            }
+            state.editingId = id;
+            render();
+            
+            // 入力欄にフォーカス
+            const editInput = document.getElementById(`edit-input-${id}`);
+            if (editInput) {
+                editInput.focus();
+                // カーソルを末尾に
+                const val = editInput.value;
+                editInput.value = '';
+                editInput.value = val;
+            }
+        }
+
+        function saveEditing(id, newText) {
+            const todo = state.todos.find(t => t.id === id);
+            if (todo) {
+                if (newText.trim()) {
+                    todo.text = newText.trim();
+                    state.editingId = null;
+                    saveData();
+                    render();
+                } else {
+                    showError('エラー: テキストが無効です');
+                }
+            }
+        }
+
+        function cancelEditing() {
+            state.editingId = null;
+            render();
+        }
+
+        // === 描画ロジック ===
+
+        function render() {
+            // フィルタリング
+            let displayTodos = state.todos;
+            if (state.filter === 'incomplete') {
+                displayTodos = state.todos.filter(t => !t.completed);
+            }
+
+            // カウント更新 (未完了タスク数)
+            const remaining = state.todos.filter(t => !t.completed).length;
+            elements.taskCount.textContent = remaining;
+
+            // リスト生成
+            elements.list.innerHTML = '';
+            
+            if (displayTodos.length === 0) {
+                elements.list.innerHTML = `
+                    <li class="text-center py-10 text-gray-600 font-display text-xl tracking-widest skew-box border border-dashed border-gray-800">
+                        <div class="unskew-content">NO ACTIVE MISSIONS</div>
+                    </li>
+                `;
+                return;
+            }
+
+            displayTodos.forEach(todo => {
+                const isEditing = state.editingId === todo.id;
+                const isCompleted = todo.completed;
+                
+                const li = document.createElement('li');
+                li.className = `todo-item-enter relative group ${isEditing ? 'z-20' : ''}`;
+                
+                // HTML構造の構築
+                let contentHtml = '';
+
+                if (isEditing) {
+                    // 編集モード
+                    contentHtml = `
+                        <div class="bg-adren-dark border-2 border-adren-red p-4 skew-box shadow-neon">
+                            <div class="unskew-content flex items-center gap-2">
+                                <input id="edit-input-${todo.id}" type="text" 
+                                    class="w-full bg-transparent text-white font-bold outline-none text-lg border-b border-gray-600 focus:border-adren-red uppercase"
+                                    value="${todo.text}">
+                                <button onclick="saveEditing('${todo.id}', document.getElementById('edit-input-${todo.id}').value)" 
+                                    class="text-adren-red hover:text-white font-display px-2">SAVE</button>
+                                <button onclick="cancelEditing()" 
+                                    class="text-gray-500 hover:text-white font-display px-2">CANCEL</button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // 表示モード
+                    contentHtml = `
+                        <div class="relative bg-adren-dark border-l-4 ${isCompleted ? 'border-gray-600' : 'border-adren-red'} p-4 hover:bg-gray-900 transition-colors duration-200">
+                            <div class="flex items-center justify-between gap-4">
+                                <div class="flex items-center gap-4 flex-1 cursor-pointer" onclick="startEditing('${todo.id}')">
+                                    <button onclick="event.stopPropagation(); toggleTodo('${todo.id}')" 
+                                        class="w-6 h-6 border-2 ${isCompleted ? 'bg-transparent border-gray-600' : 'border-adren-red bg-transparent hover:bg-adren-red'} flex items-center justify-center transition-all group-btn">
+                                        ${isCompleted ? '<span class="block w-full h-full bg-gray-600"></span>' : ''}
+                                    </button>
+                                    <span class="text-lg font-bold tracking-wide break-all uppercase ${isCompleted ? 'text-gray-600 strike-through' : 'text-white'}">
+                                        ${escapeHtml(todo.text)}
+                                    </span>
+                                </div>
+                                <button onclick="deleteTodo('${todo.id}')" 
+                                    class="text-gray-600 hover:text-adren-red transition-colors px-2 font-display text-xl font-bold opacity-0 group-hover:opacity-100 focus:opacity-100">
+                                    DEL
+                                </button>
+                            </div>
+                            ${!isCompleted && !isEditing ? '<div class="absolute bottom-1 right-1 text-[10px] text-gray-600 tracking-wider">CLICK TO EDIT</div>' : ''}
+                        </div>
+                    `;
+                }
+
+                li.innerHTML = contentHtml;
+                elements.list.appendChild(li);
+            });
+
+            // フィルターボタンのスタイル更新
+            updateFilterStyles();
+        }
+
+        function updateFilterStyles() {
+            const activeClass = 'bg-adren-red text-black border-adren-red shadow-neon';
+            const inactiveClass = 'bg-transparent text-gray-400 border-adren-gray hover:text-white hover:border-adren-red';
+
+            // クラスをリセット
+            const resetBtn = (btn) => {
+                btn.className = `skew-box px-6 py-1 border transition-all filter-btn block`;
+            };
+
+            resetBtn(elements.filterAll);
+            resetBtn(elements.filterIncomplete);
+
+            if (state.filter === 'all') {
+                elements.filterAll.classList.add(...activeClass.split(' '));
+                elements.filterIncomplete.classList.add(...inactiveClass.split(' '));
+            } else {
+                elements.filterAll.classList.add(...inactiveClass.split(' '));
+                elements.filterIncomplete.classList.add(...activeClass.split(' '));
+            }
+        }
+
+        // === イベントリスナー設定 ===
+
+        function setupEventListeners() {
+            // 追加ボタン
+            elements.addBtn.addEventListener('click', () => {
+                addTodo(elements.input.value);
+            });
+
+            // エンターキーで追加
+            elements.input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    addTodo(elements.input.value);
+                }
+            });
+
+            // フィルター切り替え
+            elements.filterAll.addEventListener('click', () => {
+                state.filter = 'all';
+                render();
+            });
+
+            elements.filterIncomplete.addEventListener('click', () => {
+                state.filter = 'incomplete';
+                render();
+            });
+
+            // 編集中のエンターキー対応（グローバルではなく個別に設定したいが、動的生成なのでここで簡易的に）
+            document.addEventListener('keypress', (e) => {
+                if (state.editingId && e.key === 'Enter') {
+                    const input = document.getElementById(`edit-input-${state.editingId}`);
+                    if (input) saveEditing(state.editingId, input.value);
+                }
+            });
+        }
+
+        // === ユーティリティ ===
+
+        // エラーメッセージ表示（通知トースト）
+        function showError(message) {
+            const toast = document.createElement('div');
+            toast.className = 'pointer-events-auto bg-black border border-adren-red text-adren-red px-6 py-3 mb-2 font-bold uppercase tracking-widest shadow-neon skew-box transform transition-all duration-300 translate-y-[-100%]';
+            toast.innerHTML = `<div class="unskew-content flex items-center gap-2"><span>?</span> ${message}</div>`;
+            
+            elements.errorContainer.appendChild(toast);
+
+            // アニメーション用遅延
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-[-100%]');
+            });
+
+            // 自動消去
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-[-100%]');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // XSS対策
+        function escapeHtml(unsafe) {
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,424 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON TODO - Y2K Style</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Space Grotesk for that Y2K tech feel -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --acid-green: #CCFF00;
+            --hot-pink: #FF0099;
+            --deep-black: #050505;
+            --off-white: #F0F0F0;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background-color: var(--deep-black);
+            color: var(--off-white);
+            overflow-x: hidden;
+        }
+
+        /* Y2K Scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #222; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--hot-pink); 
+            border: 2px solid var(--deep-black);
+        }
+
+        /* Custom Utilities */
+        .text-acid { color: var(--acid-green); }
+        .bg-acid { background-color: var(--acid-green); }
+        .border-acid { border-color: var(--acid-green); }
+        
+        .text-neon-pink { color: var(--hot-pink); }
+        .bg-neon-pink { background-color: var(--hot-pink); }
+        .border-neon-pink { border-color: var(--hot-pink); }
+
+        .y2k-shadow {
+            box-shadow: 4px 4px 0px var(--hot-pink);
+        }
+        
+        .y2k-shadow-green {
+            box-shadow: 4px 4px 0px var(--acid-green);
+        }
+
+        .y2k-box {
+            border: 2px solid var(--off-white);
+            transition: all 0.2s ease;
+        }
+
+        .y2k-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px var(--hot-pink);
+        }
+
+        .glitch-hover:hover {
+            animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+            color: var(--acid-green);
+        }
+
+        @keyframes glitch {
+            0% { transform: translate(0) }
+            20% { transform: translate(-2px, 2px) }
+            40% { transform: translate(-2px, -2px) }
+            60% { transform: translate(2px, 2px) }
+            80% { transform: translate(2px, -2px) }
+            100% { transform: translate(0) }
+        }
+
+        /* Checkbox Styling */
+        .custom-checkbox input:checked + div {
+            background-color: var(--acid-green);
+            border-color: var(--acid-green);
+        }
+        .custom-checkbox input:checked + div svg {
+            display: block;
+        }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(4px);
+        }
+        
+        /* Toast Animation */
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .toast-enter {
+            animation: slideIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-start py-8 px-4 selection:bg-pink-500 selection:text-white">
+
+    <!-- Header -->
+    <header class="w-full max-w-md mb-8 text-center">
+        <h1 class="text-6xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-green-400 transform -rotate-2">
+            NEON<br>TODO
+        </h1>
+        <p class="mt-2 text-acid text-sm tracking-widest uppercase border-b border-pink-500 inline-block pb-1">Get Things Done // Ver. 2.0</p>
+    </header>
+
+    <!-- Main App Container -->
+    <main class="w-full max-w-md">
+        
+        <!-- Controls -->
+        <div class="mb-6 flex gap-2">
+            <button id="filter-all" class="flex-1 py-2 font-bold border-2 border-white bg-white text-black y2k-shadow hover:bg-gray-200 transition-colors" onclick="setFilter('all')">
+                ALL
+            </button>
+            <button id="filter-active" class="flex-1 py-2 font-bold border-2 border-white bg-black text-white hover:border-pink-500 hover:text-pink-500 transition-colors" onclick="setFilter('active')">
+                ACTIVE
+            </button>
+        </div>
+
+        <!-- Add ToDo Form -->
+        <div class="mb-8 relative group">
+            <div class="absolute -inset-1 bg-gradient-to-r from-pink-600 to-green-600 blur opacity-25 group-hover:opacity-75 transition duration-200"></div>
+            <form id="add-form" class="relative flex y2k-box bg-black y2k-shadow-green border-acid" onsubmit="handleAdd(event)">
+                <input 
+                    type="text" 
+                    id="new-todo-input"
+                    class="w-full bg-transparent p-4 text-white placeholder-gray-500 focus:outline-none font-bold"
+                    placeholder="NEW MISSION..."
+                    autocomplete="off"
+                >
+                <button type="submit" class="bg-acid text-black px-6 font-bold hover:bg-white transition-colors border-l-2 border-acid">
+                    ADD
+                </button>
+            </form>
+        </div>
+
+        <!-- Error Message Area (Toast Container) -->
+        <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+        <!-- ToDo List -->
+        <div id="loading" class="hidden text-center py-10">
+            <div class="inline-block w-8 h-8 border-4 border-t-pink-500 border-r-transparent border-b-pink-500 border-l-transparent rounded-full animate-spin"></div>
+            <p class="mt-2 text-pink-500 font-bold animate-pulse">LOADING DATA...</p>
+        </div>
+        
+        <ul id="todo-list" class="space-y-4 pb-20">
+            <!-- Items will be injected here -->
+        </ul>
+        
+        <!-- Empty State -->
+        <div id="empty-state" class="hidden text-center py-12 border-2 border-dashed border-gray-700 rounded-lg">
+            <p class="text-2xl mb-2">??</p>
+            <p class="text-gray-500 font-bold">NO TASKS FOUND</p>
+        </div>
+    </main>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="fixed inset-0 modal-overlay hidden z-40 flex items-center justify-center p-4">
+        <div class="bg-black border-2 border-pink-500 w-full max-w-sm p-6 y2k-shadow relative">
+            <h2 class="text-2xl font-bold text-neon-pink mb-4 uppercase">Edit Mission</h2>
+            <input type="hidden" id="edit-id">
+            <input type="text" id="edit-input" class="w-full bg-gray-900 border-2 border-white p-3 mb-6 text-white focus:border-acid focus:outline-none">
+            
+            <div class="flex gap-3 justify-end">
+                <button onclick="closeModal()" class="px-4 py-2 border-2 border-white text-white hover:bg-white hover:text-black font-bold transition-colors">CANCEL</button>
+                <button onclick="saveEdit()" class="px-4 py-2 bg-neon-pink border-2 border-pink-500 text-white font-bold hover:bg-pink-400 y2k-shadow-green transition-transform active:translate-y-1">UPDATE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="fixed bottom-0 w-full bg-black border-t border-gray-800 py-2 text-center text-xs text-gray-600">
+        <p>BUILT WITH ? & HTML5</p>
+    </footer>
+
+    <script>
+        // --- State Management ---
+        let todos = [
+            { id: 1, text: 'TikTokダンスの振付を覚える', completed: false },
+            { id: 2, text: 'Y2Kコーデの古着屋巡り', completed: true },
+            { id: 3, text: 'プレイリストの更新 (Hyperpop)', completed: false },
+            { id: 4, text: 'フィルムカメラの現像', completed: false },
+            { id: 5, text: '週末のイベント予約', completed: true }
+        ];
+
+        let currentFilter = 'all';
+
+        // --- DOM Elements ---
+        const listEl = document.getElementById('todo-list');
+        const inputEl = document.getElementById('new-todo-input');
+        const emptyStateEl = document.getElementById('empty-state');
+        const toastContainer = document.getElementById('toast-container');
+        const loadingEl = document.getElementById('loading');
+
+        // Modal Elements
+        const modalEl = document.getElementById('edit-modal');
+        const editInputEl = document.getElementById('edit-input');
+        const editIdEl = document.getElementById('edit-id');
+
+        // Filter Buttons
+        const btnAll = document.getElementById('filter-all');
+        const btnActive = document.getElementById('filter-active');
+
+        // --- Core Functions ---
+
+        function init() {
+            render();
+        }
+
+        // 擬似的なエラー発生 (10%の確率で失敗)
+        function shouldFail() {
+            return Math.random() < 0.1;
+        }
+
+        function render() {
+            listEl.innerHTML = '';
+            
+            // Filtering
+            const filteredTodos = todos.filter(todo => {
+                if (currentFilter === 'active') return !todo.completed;
+                return true;
+            });
+
+            // Empty State
+            if (filteredTodos.length === 0) {
+                emptyStateEl.classList.remove('hidden');
+            } else {
+                emptyStateEl.classList.add('hidden');
+            }
+
+            // Generate HTML
+            filteredTodos.forEach(todo => {
+                const li = document.createElement('li');
+                li.className = `flex items-center justify-between p-4 border-2 ${todo.completed ? 'border-gray-700 bg-gray-900 opacity-60' : 'border-white bg-black y2k-shadow'} transition-all group hover:border-acid`;
+                
+                li.innerHTML = `
+                    <div class="flex items-center gap-4 flex-1 min-w-0">
+                        <label class="custom-checkbox cursor-pointer relative flex-shrink-0 w-6 h-6">
+                            <input type="checkbox" class="hidden" ${todo.completed ? 'checked' : ''} onchange="toggleComplete(${todo.id})">
+                            <div class="w-6 h-6 border-2 border-white flex items-center justify-center transition-colors group-hover:border-acid">
+                                <svg class="w-4 h-4 text-black hidden pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7"></path></svg>
+                            </div>
+                        </label>
+                        <span 
+                            onclick="openEditModal(${todo.id})"
+                            class="font-bold truncate cursor-pointer select-none hover:text-acid transition-colors ${todo.completed ? 'line-through text-gray-500' : 'text-white'}"
+                            title="クリックして編集"
+                        >
+                            ${escapeHtml(todo.text)}
+                        </span>
+                    </div>
+                    <button 
+                        onclick="deleteTodo(${todo.id})"
+                        class="ml-2 text-gray-500 hover:text-red-500 focus:outline-none p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label="削除"
+                    >
+                        ?
+                    </button>
+                `;
+                listEl.appendChild(li);
+            });
+
+            // Update Filter Button Styles
+            if (currentFilter === 'all') {
+                btnAll.className = "flex-1 py-2 font-bold border-2 border-white bg-white text-black y2k-shadow transition-colors";
+                btnActive.className = "flex-1 py-2 font-bold border-2 border-white bg-black text-white hover:border-pink-500 hover:text-pink-500 transition-colors";
+            } else {
+                btnAll.className = "flex-1 py-2 font-bold border-2 border-white bg-black text-white hover:border-pink-500 hover:text-pink-500 transition-colors";
+                btnActive.className = "flex-1 py-2 font-bold border-2 border-white bg-white text-black y2k-shadow transition-colors";
+            }
+        }
+
+        // --- Actions ---
+
+        function handleAdd(e) {
+            e.preventDefault();
+            const text = inputEl.value.trim();
+            if (!text) return;
+
+            // 擬似的な非同期処理とエラーハンドリング
+            if (shouldFail()) {
+                showError("?? NETWORK ERROR: データの追加に失敗しました。");
+                return;
+            }
+
+            const newTodo = {
+                id: Date.now(),
+                text: text,
+                completed: false
+            };
+
+            todos.unshift(newTodo); // Add to top
+            inputEl.value = '';
+            render();
+            showSuccess("NEW MISSION ADDED");
+        }
+
+        function toggleComplete(id) {
+            // ステータス更新のエラーシミュレーションはUXを著しく損なうためスキップ、または低確率にする
+            if (shouldFail() && Math.random() > 0.5) { // 5% chance
+                render(); // revert checkbox visual
+                showError("?? SYNC ERROR: ステータスの更新に失敗しました。");
+                return;
+            }
+
+            const todo = todos.find(t => t.id === id);
+            if (todo) {
+                todo.completed = !todo.completed;
+                render();
+            }
+        }
+
+        function deleteTodo(id) {
+            if(!confirm("このミッションを削除しますか？")) return;
+
+            todos = todos.filter(t => t.id !== id);
+            render();
+        }
+
+        function setFilter(filterType) {
+            currentFilter = filterType;
+            render();
+        }
+
+        // --- Modal & Edit Logic ---
+
+        function openEditModal(id) {
+            const todo = todos.find(t => t.id === id);
+            if (!todo) return;
+
+            editIdEl.value = id;
+            editInputEl.value = todo.text;
+            modalEl.classList.remove('hidden');
+            editInputEl.focus();
+        }
+
+        function closeModal() {
+            modalEl.classList.add('hidden');
+        }
+
+        function saveEdit() {
+            const id = Number(editIdEl.value);
+            const text = editInputEl.value.trim();
+
+            if (!text) {
+                showError("テキストを入力してください。");
+                return;
+            }
+
+            // エラーハンドリングのシミュレーション
+            if (shouldFail()) {
+                showError("?? SAVE FAILED: 更新中にエラーが発生しました。");
+                return;
+            }
+
+            const todo = todos.find(t => t.id === id);
+            if (todo) {
+                todo.text = text;
+                closeModal();
+                render();
+                showSuccess("MISSION UPDATED");
+            }
+        }
+
+        // --- Utilities ---
+
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function showError(msg) {
+            createToast(msg, 'error');
+        }
+
+        function showSuccess(msg) {
+            createToast(msg, 'success');
+        }
+
+        function createToast(msg, type) {
+            const toast = document.createElement('div');
+            const bgColor = type === 'error' ? 'bg-red-600' : 'bg-acid';
+            const textColor = type === 'error' ? 'text-white' : 'text-black';
+            
+            toast.className = `p-4 mb-2 font-bold border-2 border-black y2k-shadow ${bgColor} ${textColor} toast-enter pointer-events-auto shadow-lg max-w-xs`;
+            toast.innerHTML = `
+                <div class="flex justify-between items-center gap-3">
+                    <span>${msg}</span>
+                </div>
+            `;
+
+            toastContainer.appendChild(toast);
+
+            // Auto remove
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-10px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Close modal on outside click
+        modalEl.addEventListener('click', (e) => {
+            if (e.target === modalEl) closeModal();
+        });
+
+        // Initialize App
+        init();
+
+    </script>
+</body>
+</html>

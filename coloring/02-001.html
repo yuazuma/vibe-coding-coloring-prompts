@@ -1,0 +1,413 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pizza ToDo - シンプルなタスク管理</title>
+    <!-- Tailwind CSS (スタイリング用) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome (アイコン用) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts: 活気のあるフォント -->
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'pizza-red': '#E63946', // トマトソース
+                        'pizza-dark-red': '#C1121F', // 濃いトマト
+                        'pizza-cheese': '#F4A261', // チェダーチーズ
+                        'pizza-crust': '#FEFAE0', // ピザ生地
+                        'pizza-orange': '#E76F51', // 焼き目
+                    },
+                    fontFamily: {
+                        sans: ['"M PLUS Rounded 1c"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #FEFAE0; /* ピザ生地のような優しい色 */
+            font-family: "M PLUS Rounded 1c", sans-serif;
+        }
+        .task-checkbox:checked + div {
+            text-decoration: line-through;
+            color: #9CA3AF;
+        }
+        /* スクロールバーのカスタマイズ */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #E63946; 
+            border-radius: 4px;
+        }
+        .toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 16px;
+            position: fixed;
+            z-index: 50;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            font-size: 16px;
+            opacity: 0;
+            transition: opacity 0.3s, bottom 0.3s;
+        }
+        .toast.show {
+            visibility: visible;
+            opacity: 1;
+            bottom: 50px;
+        }
+        .toast.error {
+            background-color: #C1121F;
+        }
+        .toast.success {
+            background-color: #2a9d8f;
+        }
+    </style>
+</head>
+<body class="text-gray-800 min-h-screen flex flex-col items-center py-8 px-4">
+
+    <!-- アプリケーションコンテナ -->
+    <div class="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden border-4 border-pizza-cheese">
+        
+        <!-- ヘッダーエリア -->
+        <header class="bg-pizza-red p-6 text-white text-center relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-2 bg-pizza-cheese opacity-50"></div>
+            <h1 class="text-3xl font-bold tracking-wider drop-shadow-md">
+                <i class="fas fa-pizza-slice mr-2 text-pizza-cheese"></i>Pizza ToDo
+            </h1>
+            <p class="text-sm mt-2 text-red-100 font-bold">アツアツのうちにタスクを消化しよう！</p>
+        </header>
+
+        <!-- コントロールエリア -->
+        <div class="p-6 bg-orange-50 border-b border-orange-100">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-pizza-dark-red">メニュー (タスク一覧)</h2>
+                <button onclick="openModal()" class="bg-pizza-orange hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-full shadow-lg transition transform hover:scale-105 active:scale-95 flex items-center">
+                    <i class="fas fa-plus mr-2"></i> 追加
+                </button>
+            </div>
+            
+            <!-- フィルター -->
+            <label class="flex items-center cursor-pointer select-none">
+                <div class="relative">
+                    <input type="checkbox" id="filterIncomplete" class="sr-only" onchange="renderTodos()">
+                    <div class="w-10 h-6 bg-gray-300 rounded-full shadow-inner transition duration-300 ease-in-out" id="toggle-bg"></div>
+                    <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full shadow transition duration-300 ease-in-out" id="toggle-dot"></div>
+                </div>
+                <span class="ml-3 text-sm font-bold text-gray-600">未完了のみ表示</span>
+            </label>
+        </div>
+
+        <!-- タスクリスト -->
+        <div class="p-4 bg-white min-h-[400px]">
+            <ul id="todoList" class="space-y-3">
+                <!-- ここにJavaScriptでリストが生成されます -->
+            </ul>
+            <div id="emptyState" class="hidden flex flex-col items-center justify-center h-64 text-gray-400">
+                <i class="fas fa-utensils text-6xl mb-4 text-pizza-cheese opacity-50"></i>
+                <p>タスクはありません。<br>美味しいピザでも食べましょう！</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- モーダル (追加・編集用) -->
+    <div id="todoModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all scale-100 border-t-8 border-pizza-red">
+            <div class="p-6">
+                <h3 id="modalTitle" class="text-2xl font-bold text-pizza-dark-red mb-6 border-b-2 border-orange-100 pb-2">
+                    <i class="fas fa-pen mr-2"></i>タスクの編集
+                </h3>
+                
+                <form id="todoForm" onsubmit="handleSave(event)">
+                    <input type="hidden" id="todoId">
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="title">
+                            タスク名 <span class="text-pizza-red">*</span>
+                        </label>
+                        <input class="shadow-inner appearance-none border border-orange-200 rounded-lg w-full py-3 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-pizza-orange focus:border-transparent transition" id="title" type="text" placeholder="例：トマト缶を買う" required>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="description">
+                            詳細（トッピング）
+                        </label>
+                        <textarea class="shadow-inner appearance-none border border-orange-200 rounded-lg w-full py-3 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-pizza-orange focus:border-transparent transition h-24 resize-none" id="description" placeholder="詳細なメモがあればここに記入..."></textarea>
+                    </div>
+
+                    <div class="flex items-center justify-end space-x-3">
+                        <button type="button" onclick="closeModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg transition">
+                            キャンセル
+                        </button>
+                        <button type="submit" class="bg-pizza-red hover:bg-pizza-dark-red text-white font-bold py-2 px-6 rounded-lg shadow-md transition transform hover:scale-105">
+                            保存する
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- トースト通知 (エラー/成功メッセージ用) -->
+    <div id="toast" class="toast">メッセージ</div>
+
+    <footer class="mt-8 text-pizza-orange opacity-70 text-sm font-bold">
+        &copy; 2024 Pizza ToDo App
+    </footer>
+
+    <script>
+        // --- データの初期化 (ダミーデータ) ---
+        let todos = [
+            { id: 1, title: 'ピザ生地の発酵を確認する', description: '冷蔵庫で24時間低温発酵させた生地の状態をチェック', isComplete: false },
+            { id: 2, title: 'トマトソースの仕込み', description: 'サンマルツァーノトマトを使用し、バジルと一緒に煮込む', isComplete: true },
+            { id: 3, title: 'モッツァレラチーズの買い出し', description: '水牛のモッツァレラ（ブッファラ）を探す', isComplete: false },
+            { id: 4, title: '薪窯のメンテナンス', description: '温度計のチェックと掃除', isComplete: false },
+            { id: 5, title: '新しいメニューの考案', description: '季節の野菜を使ったプリマヴェーラ', isComplete: false }
+        ];
+
+        // --- 初期ロード時の処理 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                // 本来はここでAPIからデータを取得する
+                // fetchTodos(); 
+                renderTodos();
+            } catch (error) {
+                showToast('データの読み込みに失敗しました。', 'error');
+            }
+        });
+
+        // --- 表示ロジック ---
+        function renderTodos() {
+            const listElement = document.getElementById('todoList');
+            const emptyState = document.getElementById('emptyState');
+            const filterIncomplete = document.getElementById('filterIncomplete').checked;
+            
+            // トグルボタンのスタイル制御
+            const toggleBg = document.getElementById('toggle-bg');
+            const toggleDot = document.getElementById('toggle-dot');
+            if (filterIncomplete) {
+                toggleBg.classList.replace('bg-gray-300', 'bg-pizza-orange');
+                toggleDot.classList.replace('translate-x-0', 'translate-x-4');
+            } else {
+                toggleBg.classList.replace('bg-pizza-orange', 'bg-gray-300');
+                toggleDot.classList.replace('translate-x-4', 'translate-x-0');
+            }
+
+            // フィルタリング
+            const filteredTodos = todos.filter(todo => !filterIncomplete || !todo.isComplete);
+
+            listElement.innerHTML = '';
+
+            if (filteredTodos.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                
+                filteredTodos.forEach(todo => {
+                    const li = document.createElement('li');
+                    li.className = `bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-xl p-4 flex items-center justify-between transition duration-200 cursor-pointer shadow-sm hover:shadow-md ${todo.isComplete ? 'opacity-60 bg-gray-50' : ''}`;
+                    // カード全体をクリックで編集モード
+                    li.onclick = (e) => openModal(todo.id);
+
+                    li.innerHTML = `
+                        <div class="flex items-center flex-1 mr-4 overflow-hidden">
+                            <!-- チェックボックスのクリックイベントはバブリングを止める -->
+                            <div onclick="event.stopPropagation()" class="flex-shrink-0 mr-4">
+                                <button onclick="toggleComplete(${todo.id})" class="w-8 h-8 rounded-full border-2 flex items-center justify-center transition ${todo.isComplete ? 'bg-pizza-cheese border-pizza-cheese text-white' : 'border-gray-300 text-transparent hover:border-pizza-cheese'}">
+                                    <i class="fas fa-check text-sm"></i>
+                                </button>
+                            </div>
+                            <div class="flex-1 overflow-hidden">
+                                <h3 class="font-bold text-lg truncate ${todo.isComplete ? 'line-through text-gray-500' : 'text-gray-800'}">${escapeHtml(todo.title)}</h3>
+                                <p class="text-xs text-gray-500 truncate mt-1">${escapeHtml(todo.description || '詳細なし')}</p>
+                            </div>
+                        </div>
+                        <!-- 削除ボタンのクリックイベントもバブリングを止める -->
+                        <button onclick="deleteTodo(${todo.id}, event)" class="flex-shrink-0 text-gray-400 hover:text-pizza-red transition p-2 rounded-full hover:bg-red-50" title="削除">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    `;
+                    listElement.appendChild(li);
+                });
+            }
+        }
+
+        // --- データ操作ロジック ---
+
+        // モーダルを開く (新規 or 編集)
+        function openModal(id = null) {
+            const modal = document.getElementById('todoModal');
+            const form = document.getElementById('todoForm');
+            const modalTitle = document.getElementById('modalTitle');
+
+            // フォームのリセット
+            form.reset();
+            document.getElementById('todoId').value = '';
+
+            if (id) {
+                // 編集モード
+                const todo = todos.find(t => t.id === id);
+                if (!todo) {
+                    showToast('エラー：タスクが見つかりません', 'error');
+                    return;
+                }
+                modalTitle.innerHTML = '<i class="fas fa-edit mr-2"></i>具材（タスク）の変更';
+                document.getElementById('todoId').value = todo.id;
+                document.getElementById('title').value = todo.title;
+                document.getElementById('description').value = todo.description;
+            } else {
+                // 新規作成モード
+                modalTitle.innerHTML = '<i class="fas fa-pizza-slice mr-2"></i>新しい具材（タスク）を追加';
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            // アニメーション用クラス適用
+            setTimeout(() => {
+                modal.firstElementChild.classList.remove('scale-95', 'opacity-0');
+                modal.firstElementChild.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        // モーダルを閉じる
+        function closeModal() {
+            const modal = document.getElementById('todoModal');
+            // アニメーション
+            modal.firstElementChild.classList.remove('scale-100', 'opacity-100');
+            modal.firstElementChild.classList.add('scale-95', 'opacity-0');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 200);
+        }
+
+        // 保存処理 (新規作成および更新)
+        function handleSave(e) {
+            e.preventDefault();
+            
+            const idInput = document.getElementById('todoId').value;
+            const title = document.getElementById('title').value.trim();
+            const description = document.getElementById('description').value.trim();
+
+            if (!title) {
+                showToast('タスク名を入力してください', 'error');
+                return;
+            }
+
+            try {
+                // 疑似的なエラー発生（デモ用：ランダムに5%の確率で失敗させる）
+                if (Math.random() < 0.05) {
+                    throw new Error('ネットワークエラーが発生しました');
+                }
+
+                if (idInput) {
+                    // 更新
+                    const id = parseInt(idInput);
+                    const index = todos.findIndex(t => t.id === id);
+                    if (index !== -1) {
+                        todos[index] = { ...todos[index], title, description };
+                        showToast('タスクを更新しました！', 'success');
+                    }
+                } else {
+                    // 新規作成
+                    const newId = todos.length > 0 ? Math.max(...todos.map(t => t.id)) + 1 : 1;
+                    todos.unshift({ // リストの一番上に追加
+                        id: newId,
+                        title,
+                        description,
+                        isComplete: false
+                    });
+                    showToast('新しいタスクを追加しました！', 'success');
+                }
+
+                closeModal();
+                renderTodos();
+
+            } catch (error) {
+                console.error(error);
+                showToast('保存に失敗しました。もう一度お試しください。', 'error');
+            }
+        }
+
+        // 完了状態の切り替え
+        function toggleComplete(id) {
+            const index = todos.findIndex(t => t.id === id);
+            if (index !== -1) {
+                todos[index].isComplete = !todos[index].isComplete;
+                renderTodos();
+                // 完了時のみメッセージを出すなどUX調整可能
+            }
+        }
+
+        // 削除処理
+        function deleteTodo(id, event) {
+            event.stopPropagation(); // 親要素のクリックイベント発火を防ぐ
+            
+            if (confirm('このタスクを削除してもよろしいですか？')) {
+                try {
+                    todos = todos.filter(t => t.id !== id);
+                    renderTodos();
+                    showToast('タスクを削除しました', 'success');
+                } catch (error) {
+                    showToast('削除に失敗しました', 'error');
+                }
+            }
+        }
+
+        // --- ユーティリティ ---
+
+        // XSS対策用エスケープ
+        function escapeHtml(unsafe) {
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+
+        // トースト通知表示
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast show'; // リセット
+            
+            if (type === 'error') {
+                toast.classList.add('error');
+            } else {
+                toast.classList.add('success');
+            }
+
+            // 3秒後に消える
+            setTimeout(() => {
+                toast.className = toast.className.replace('show', '');
+            }, 3000);
+        }
+
+        // モーダル背景クリックで閉じる
+        window.onclick = function(event) {
+            const modal = document.getElementById('todoModal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>

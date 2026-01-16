@@ -1,0 +1,472 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rose ToDo List</title>
+    <!-- Tailwind CSS (Utility Framework) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Elegant Serif & Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Zen+Old+Mincho:wght@400;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        rose: {
+                            50: '#FDF2F2',
+                            100: '#FCE7E7',
+                            200: '#F6D2D2',  // Light dusty pink
+                            300: '#EBC8C8',  // Dusty pink base
+                            400: '#D8A6A6',
+                            500: '#C08080',
+                            900: '#5D3A3A',  // Dark contrast
+                        },
+                        champagne: {
+                            light: '#F3E5AB',
+                            DEFAULT: '#C5A059', // Champagne Gold
+                            dark: '#9C7C3E',    // Darker Gold for text
+                            text: '#8A6D3B'     // Readable Gold
+                        }
+                    },
+                    fontFamily: {
+                        serif: ['"Cormorant Garamond"', '"Zen Old Mincho"', 'serif'],
+                        sans: ['"Helvetica Neue"', 'Arial', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Styles for nuances */
+        body {
+            background-color: #F4EBEB;
+            background-image: linear-gradient(135deg, #F4EBEB 0%, #EBC8C8 100%);
+            min-height: 100vh;
+            color: #5D3A3A; /* Dark Rose Brown for main text readability */
+        }
+        
+        .gold-text {
+            color: #9C7C3E;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 10px 30px -5px rgba(192, 128, 128, 0.2);
+        }
+
+        /* Checkbox customization */
+        .custom-checkbox {
+            appearance: none;
+            background-color: #fff;
+            margin: 0;
+            font: inherit;
+            color: #C5A059;
+            width: 1.25em;
+            height: 1.25em;
+            border: 1px solid #C5A059;
+            border-radius: 50%;
+            display: grid;
+            place-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .custom-checkbox::before {
+            content: "";
+            width: 0.65em;
+            height: 0.65em;
+            transform: scale(0);
+            transition: 120ms transform ease-in-out;
+            box-shadow: inset 1em 1em #C5A059;
+            transform-origin: center;
+            clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+        }
+
+        .custom-checkbox:checked::before {
+            transform: scale(1);
+        }
+
+        .custom-checkbox:checked {
+            border-color: #C5A059;
+        }
+
+        /* Transitions */
+        .todo-item {
+            transition: all 0.3s ease;
+        }
+        .todo-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(192, 128, 128, 0.15);
+        }
+
+        /* Edit Input */
+        .edit-input {
+            border-bottom: 1px solid #C5A059;
+            outline: none;
+            background: transparent;
+            width: 100%;
+            font-family: inherit;
+            color: #5D3A3A;
+        }
+        
+        /* Loading Spinner */
+        .spinner {
+            border: 3px solid rgba(197, 160, 89, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #C5A059;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Error Toast Animation */
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .toast-enter {
+            animation: slideIn 0.5s forwards;
+        }
+    </style>
+</head>
+<body class="font-serif antialiased p-4 md:p-8 flex items-center justify-center">
+
+    <!-- Main Container -->
+    <div class="w-full max-w-2xl glass-panel rounded-2xl p-6 md:p-10 relative overflow-hidden">
+        
+        <!-- Decorative Background Element -->
+        <div class="absolute -top-10 -right-10 w-40 h-40 bg-rose-200 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
+        <div class="absolute -bottom-10 -left-10 w-40 h-40 bg-champagne-light rounded-full blur-3xl opacity-50 pointer-events-none"></div>
+
+        <!-- Header -->
+        <header class="text-center mb-10 relative z-10">
+            <h1 class="text-4xl md:text-5xl font-bold text-champagne-dark mb-2 tracking-wide">La Vie en Rose</h1>
+            <p class="text-rose-900 italic opacity-70 text-lg">My Elegant ToDo List</p>
+        </header>
+
+        <!-- Input Area -->
+        <div class="mb-8 relative z-10">
+            <div class="flex flex-col md:flex-row gap-3">
+                <input type="text" id="todoInput" placeholder="新しいタスクを入力..." 
+                    class="flex-1 bg-white/50 border border-rose-200 rounded-lg px-4 py-3 focus:outline-none focus:border-champagne focus:ring-1 focus:ring-champagne transition-colors placeholder-rose-400 text-rose-900">
+                <button onclick="handleAdd()" 
+                    class="bg-champagne hover:bg-champagne-dark text-white px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 tracking-wider font-semibold whitespace-nowrap flex items-center justify-center gap-2">
+                    <span>Add Task</span>
+                    <span class="text-xl">+</span>
+                </button>
+            </div>
+            <p id="inputError" class="text-red-400 text-sm mt-2 hidden pl-1">※ タスクを入力してください</p>
+        </div>
+
+        <!-- Filters -->
+        <div class="flex justify-between items-center mb-6 relative z-10 border-b border-rose-100 pb-2">
+            <div class="text-champagne-text text-sm font-semibold">
+                Tasks: <span id="taskCount">0</span>
+            </div>
+            <div class="flex gap-4 text-sm">
+                <button onclick="setFilter('all')" id="filterAll" class="text-champagne-dark font-bold border-b-2 border-champagne pb-1 transition-colors">すべて</button>
+                <button onclick="setFilter('incomplete')" id="filterIncomplete" class="text-rose-400 hover:text-champagne-dark transition-colors pb-1 border-b-2 border-transparent hover:border-champagne-light">未完了のみ</button>
+            </div>
+        </div>
+
+        <!-- List Area -->
+        <ul id="todoList" class="space-y-3 relative z-10 min-h-[200px]">
+            <!-- Items will be injected here -->
+        </ul>
+        
+        <!-- Empty State (Hidden by default) -->
+        <div id="emptyState" class="hidden text-center py-10 text-rose-400 italic">
+            <p>No tasks found. Shall we take a break?</p>
+        </div>
+
+    </div>
+
+    <!-- Error Toast -->
+    <div id="errorToast" class="fixed top-5 right-5 bg-white border-l-4 border-rose-500 shadow-xl rounded-md p-4 hidden z-50 max-w-xs transform transition-all duration-500">
+        <div class="flex items-start">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-rose-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                </svg>
+            </div>
+            <div class="ml-3">
+                <p class="text-sm font-medium text-rose-800" id="errorMessage">Error occurred</p>
+            </div>
+            <div class="ml-auto pl-3">
+                <div class="-mx-1.5 -my-1.5">
+                    <button onclick="hideError()" class="inline-flex rounded-md p-1.5 text-rose-500 hover:bg-rose-100 focus:outline-none">
+                        <span class="sr-only">Dismiss</span>
+                        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- State Management ---
+        let todos = [];
+        let filter = 'all'; // 'all' or 'incomplete'
+        let editingId = null;
+
+        // Dummy Data
+        const initialData = [
+            { id: '1', text: 'バラの花束を買う', completed: false },
+            { id: '2', text: 'スパの予約を入れる', completed: true },
+            { id: '3', text: '結婚式の招待状を返信', completed: false },
+            { id: '4', text: 'シャンパンを受け取る', completed: false },
+            { id: '5', text: 'お礼状を書く', completed: false },
+        ];
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                // Simulate fetching data
+                todos = [...initialData];
+                render();
+            } catch (e) {
+                showError("データの読み込みに失敗しました。");
+            }
+        });
+
+        // --- Core Functions ---
+
+        function render() {
+            const listContainer = document.getElementById('todoList');
+            const emptyState = document.getElementById('emptyState');
+            const countSpan = document.getElementById('taskCount');
+            
+            // Filter Logic
+            const filteredTodos = todos.filter(todo => {
+                if (filter === 'incomplete') return !todo.completed;
+                return true;
+            });
+
+            // Update Counts
+            countSpan.textContent = filteredTodos.length;
+
+            // Clear List
+            listContainer.innerHTML = '';
+
+            if (filteredTodos.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            // Generate HTML
+            filteredTodos.forEach(todo => {
+                const li = document.createElement('li');
+                li.className = `todo-item bg-white/60 rounded-lg p-4 flex items-center justify-between gap-4 border border-transparent hover:border-rose-200 group`;
+                
+                // Determine content (Text or Input)
+                let contentHtml = '';
+                if (editingId === todo.id) {
+                    contentHtml = `
+                        <input type="text" id="edit-input-${todo.id}" 
+                            class="edit-input text-lg flex-1 py-1" 
+                            value="${escapeHtml(todo.text)}" 
+                            onblur="saveEdit('${todo.id}')" 
+                            onkeydown="handleEditKey(event, '${todo.id}')">
+                    `;
+                } else {
+                    const textStyle = todo.completed ? 'text-rose-300 line-through decoration-rose-300' : 'text-rose-900';
+                    contentHtml = `
+                        <span onclick="startEdit('${todo.id}')" 
+                            class="flex-1 text-lg cursor-pointer ${textStyle} hover:text-champagne-dark transition-colors truncate" 
+                            title="クリックして編集">
+                            ${escapeHtml(todo.text)}
+                        </span>
+                    `;
+                }
+
+                li.innerHTML = `
+                    <div class="flex items-center gap-3 flex-1 min-w-0">
+                        <input type="checkbox" 
+                            class="custom-checkbox flex-shrink-0" 
+                            ${todo.completed ? 'checked' : ''} 
+                            onchange="toggleComplete('${todo.id}')">
+                        ${contentHtml}
+                    </div>
+                    
+                    <button onclick="deleteTodo('${todo.id}')" 
+                        class="text-rose-300 hover:text-rose-500 transition-colors p-2 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                        aria-label="削除">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
+                `;
+                listContainer.appendChild(li);
+
+                // Focus input if just entered edit mode
+                if (editingId === todo.id) {
+                    setTimeout(() => document.getElementById(`edit-input-${todo.id}`).focus(), 0);
+                }
+            });
+        }
+
+        function handleAdd() {
+            const input = document.getElementById('todoInput');
+            const errorMsg = document.getElementById('inputError');
+            const text = input.value.trim();
+
+            if (!text) {
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            errorMsg.classList.add('hidden');
+
+            try {
+                // Generate simple unique ID
+                const newId = Date.now().toString();
+                const newTodo = {
+                    id: newId,
+                    text: text,
+                    completed: false
+                };
+
+                todos.unshift(newTodo); // Add to top
+                input.value = '';
+                // If filter is active but user adds new task, user might expect to see it.
+                // For now, we keep filter state but the item might be hidden if filter is active.
+                // Let's reset filter to 'all' for better UX when adding.
+                if (filter === 'incomplete') setFilter('all');
+                else render();
+
+            } catch (e) {
+                showError("タスクの追加に失敗しました。");
+            }
+        }
+
+        // Allow Enter key to add
+        document.getElementById('todoInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') handleAdd();
+        });
+
+        function toggleComplete(id) {
+            try {
+                const index = todos.findIndex(t => t.id === id);
+                if (index !== -1) {
+                    todos[index].completed = !todos[index].completed;
+                    render();
+                }
+            } catch (e) {
+                showError("ステータスの更新に失敗しました。");
+            }
+        }
+
+        function deleteTodo(id) {
+            if (!confirm('このタスクを削除してもよろしいですか？')) return;
+            
+            try {
+                todos = todos.filter(t => t.id !== id);
+                render();
+            } catch (e) {
+                showError("削除に失敗しました。");
+            }
+        }
+
+        // --- Edit Mode Functions ---
+
+        function startEdit(id) {
+            const todo = todos.find(t => t.id === id);
+            if (todo && !todo.completed) { // Completed items not editable for simplicity
+                editingId = id;
+                render();
+            }
+        }
+
+        function saveEdit(id) {
+            if (editingId !== id) return; // Prevention
+
+            const input = document.getElementById(`edit-input-${id}`);
+            const newText = input.value.trim();
+
+            if (newText) {
+                const index = todos.findIndex(t => t.id === id);
+                if (index !== -1) {
+                    todos[index].text = newText;
+                }
+            } else {
+                // If empty, delete or cancel? Let's cancel (revert)
+                // Or user might want to delete. Let's just revert here.
+            }
+            
+            editingId = null;
+            render();
+        }
+
+        function handleEditKey(e, id) {
+            if (e.key === 'Enter') {
+                saveEdit(id);
+            } else if (e.key === 'Escape') {
+                editingId = null;
+                render();
+            }
+        }
+
+        // --- Filter Functions ---
+
+        function setFilter(type) {
+            filter = type;
+            
+            // Update UI Styles for Tabs
+            const btnAll = document.getElementById('filterAll');
+            const btnIncomplete = document.getElementById('filterIncomplete');
+            
+            if (type === 'all') {
+                btnAll.className = 'text-champagne-dark font-bold border-b-2 border-champagne pb-1 transition-colors';
+                btnIncomplete.className = 'text-rose-400 hover:text-champagne-dark transition-colors pb-1 border-b-2 border-transparent hover:border-champagne-light';
+            } else {
+                btnAll.className = 'text-rose-400 hover:text-champagne-dark transition-colors pb-1 border-b-2 border-transparent hover:border-champagne-light';
+                btnIncomplete.className = 'text-champagne-dark font-bold border-b-2 border-champagne pb-1 transition-colors';
+            }
+
+            render();
+        }
+
+        // --- Utilities ---
+
+        function showError(message) {
+            const toast = document.getElementById('errorToast');
+            const msgEl = document.getElementById('errorMessage');
+            
+            msgEl.textContent = message;
+            toast.classList.remove('hidden');
+            toast.classList.add('toast-enter');
+
+            // Auto hide after 3 seconds
+            setTimeout(() => {
+                hideError();
+            }, 3000);
+        }
+
+        function hideError() {
+            const toast = document.getElementById('errorToast');
+            toast.classList.add('hidden');
+            toast.classList.remove('toast-enter');
+        }
+
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,492 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lemon ToDo</title>
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome (Icons) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        lemon: {
+                            DEFAULT: '#EAFF00', // 鮮やかなレモンイエロー
+                            dim: '#b8c900',
+                            glow: 'rgba(234, 255, 0, 0.5)'
+                        },
+                        dark: {
+                            bg: '#121212',
+                            card: '#1e1e1e',
+                            input: '#2a2a2a'
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', "Liberation Mono", "Courier New", monospace],
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.3s ease-out',
+                        'slide-down': 'slideDown 0.3s ease-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        slideDown: {
+                            '0%': { opacity: '0', transform: 'translateY(-20px) translateX(-50%)' },
+                            '100%': { opacity: '1', transform: 'translateY(0) translateX(-50%)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #121212;
+            color: #f3f3f3;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e1e1e;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #EAFF00;
+        }
+        
+        .lemon-shadow {
+            box-shadow: 4px 4px 0px #EAFF00;
+            transition: all 0.2s ease;
+        }
+        .lemon-shadow:active {
+            box-shadow: 0px 0px 0px #EAFF00;
+            transform: translate(4px, 4px);
+        }
+
+        .checkbox-wrapper input:checked + div {
+            background-color: #EAFF00;
+            border-color: #EAFF00;
+        }
+        .checkbox-wrapper input:checked + div i {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="font-mono min-h-screen flex flex-col items-center py-10 px-4 relative">
+
+    <!-- Error Toast Notification -->
+    <div id="error-toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded shadow-lg z-50 hidden flex items-center gap-3 w-11/12 max-w-md animate-slide-down">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span id="error-message" class="text-sm font-bold">エラーが発生しました</span>
+        <button onclick="hideError()" class="ml-auto hover:text-red-200"><i class="fa-solid fa-times"></i></button>
+    </div>
+
+    <!-- Main Container -->
+    <main class="w-full max-w-2xl">
+        
+        <!-- Header -->
+        <header class="mb-8 text-center border-b-2 border-lemon pb-4">
+            <h1 class="text-4xl md:text-5xl font-black text-lemon tracking-tighter uppercase italic">
+                Lemon<span class="text-white">ToDo</span>
+            </h1>
+            <p class="text-gray-400 mt-2 text-xs md:text-sm">Don't forget to be awesome.</p>
+        </header>
+
+        <!-- Input Area -->
+        <div class="bg-dark-card p-6 rounded-lg mb-8 border border-gray-800 relative group hover:border-lemon transition duration-300">
+            <div class="flex flex-col md:flex-row gap-4">
+                <input type="text" id="new-todo-input" 
+                    class="flex-1 bg-dark-input text-white px-4 py-3 rounded focus:outline-none focus:ring-2 focus:ring-lemon placeholder-gray-500"
+                    placeholder="新しいタスクを入力..."
+                    onkeypress="handleKeyPress(event)">
+                <button onclick="addTodo()" 
+                    class="bg-lemon text-black font-bold px-6 py-3 rounded uppercase tracking-wider lemon-shadow hover:bg-white transition-colors">
+                    Add Task
+                </button>
+            </div>
+        </div>
+
+        <!-- Filter & Stats -->
+        <div class="flex justify-between items-center mb-6 text-sm">
+            <div class="flex gap-4">
+                <button id="filter-all" onclick="setFilter('all')" class="text-lemon font-bold border-b-2 border-lemon pb-1">All</button>
+                <button id="filter-active" onclick="setFilter('active')" class="text-gray-500 hover:text-white transition pb-1">Incomplete</button>
+            </div>
+            <span id="task-count" class="text-gray-500">Loading...</span>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="loading-spinner" class="hidden flex justify-center py-10">
+            <i class="fa-solid fa-circle-notch fa-spin text-4xl text-lemon"></i>
+        </div>
+
+        <!-- ToDo List -->
+        <ul id="todo-list" class="space-y-3">
+            <!-- JavaScript will populate this -->
+        </ul>
+
+        <!-- Empty State (Hidden by default) -->
+        <div id="empty-state" class="hidden text-center py-12 opacity-50">
+            <i class="fa-regular fa-lemon text-6xl mb-4 text-gray-600"></i>
+            <p class="text-gray-400">No tasks found. Take a break!</p>
+        </div>
+
+    </main>
+
+    <footer class="mt-auto pt-10 text-gray-600 text-xs">
+        <p>&copy; 2026 Lemon ToDo App. Built with Vanilla JS.</p>
+    </footer>
+
+    <script>
+        // ==========================================
+        // Mock API & Data (Simulating Backend)
+        // ==========================================
+        
+        // 初期のダミーデータ
+        const dummyData = [
+            { id: 1, text: "プロジェクトの要件定義を完了する", completed: false },
+            { id: 2, text: "レモンイエローの配色パレットを作成", completed: true },
+            { id: 3, text: "週次ミーティングの資料準備", completed: false },
+            { id: 4, text: "クライアントへのメール返信", completed: false },
+            { id: 5, text: "JavaScriptの非同期処理の復習", completed: true },
+        ];
+
+        // 擬似APIクライアント
+        const mockApi = {
+            // 遅延とランダムなエラーをシミュレートするヘルパー
+            _simulateNetwork: (callback) => {
+                return new Promise((resolve, reject) => {
+                    const delay = 400 + Math.random() * 600; // 0.4~1.0秒のランダムな遅延
+                    setTimeout(() => {
+                        // 5%の確率でネットワークエラーを発生させる（デモ用）
+                        if (Math.random() < 0.05) {
+                            reject(new Error("サーバーとの通信に失敗しました。再試行してください。"));
+                        } else {
+                            resolve(callback());
+                        }
+                    }, delay);
+                });
+            },
+
+            getAll: () => mockApi._simulateNetwork(() => [...dummyData]),
+            
+            add: (text) => mockApi._simulateNetwork(() => {
+                const newTodo = { id: Date.now(), text, completed: false };
+                dummyData.unshift(newTodo); // 先頭に追加
+                return newTodo;
+            }),
+
+            update: (id, updates) => mockApi._simulateNetwork(() => {
+                const index = dummyData.findIndex(t => t.id === id);
+                if (index === -1) throw new Error("タスクが見つかりません。");
+                dummyData[index] = { ...dummyData[index], ...updates };
+                return dummyData[index];
+            }),
+
+            delete: (id) => mockApi._simulateNetwork(() => {
+                const index = dummyData.findIndex(t => t.id === id);
+                if (index === -1) throw new Error("削除対象のタスクが見つかりません。");
+                dummyData.splice(index, 1);
+                return { success: true };
+            })
+        };
+
+        // ==========================================
+        // State Management
+        // ==========================================
+        
+        const state = {
+            todos: [],
+            filter: 'all', // 'all' or 'active'
+            loading: false,
+            editingId: null, // ID of the todo currently being edited
+        };
+
+        // ==========================================
+        // App Logic
+        // ==========================================
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', async () => {
+            await fetchTodos();
+        });
+
+        // データの取得
+        async function fetchTodos() {
+            setLoading(true);
+            try {
+                const data = await mockApi.getAll();
+                state.todos = data;
+                render();
+            } catch (error) {
+                showError("データの読み込みに失敗しました: " + error.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // ToDoの追加
+        async function addTodo() {
+            const input = document.getElementById('new-todo-input');
+            const text = input.value.trim();
+
+            if (!text) {
+                showError("タスクを入力してください！");
+                return;
+            }
+
+            setLoading(true); // 全体ローディングはUX的に微妙だが、シンプルさのため採用
+            try {
+                const newTodo = await mockApi.add(text);
+                state.todos.unshift(newTodo); // Stateも更新（MockApiは参照を共有しているが、明示的に）
+                input.value = '';
+                render();
+            } catch (error) {
+                showError("追加に失敗しました: " + error.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // 完了状態の切り替え
+        async function toggleComplete(id) {
+            const todo = state.todos.find(t => t.id === id);
+            if (!todo) return;
+
+            // UIを楽観的更新（即座に反映）
+            const originalStatus = todo.completed;
+            todo.completed = !todo.completed;
+            render();
+
+            try {
+                // バックグラウンドで更新
+                await mockApi.update(id, { completed: todo.completed });
+            } catch (error) {
+                // 失敗したら元に戻す
+                todo.completed = originalStatus;
+                render();
+                showError("更新に失敗しました。");
+            }
+        }
+
+        // 削除
+        async function deleteTodo(id) {
+            if(!confirm("本当にこのタスクを削除しますか？")) return;
+
+            // ローディング表示の代わりに、対象アイテムを半透明にするなどの処理も可能だが
+            // ここではシンプルに再描画で処理する
+            
+            try {
+                await mockApi.delete(id);
+                state.todos = state.todos.filter(t => t.id !== id);
+                render();
+            } catch (error) {
+                showError("削除に失敗しました: " + error.message);
+            }
+        }
+
+        // 編集モード開始
+        function startEditing(id) {
+            state.editingId = id;
+            render();
+            // インプットにフォーカスを当てる
+            setTimeout(() => {
+                const input = document.getElementById(`edit-input-${id}`);
+                if (input) {
+                    input.focus();
+                    input.select(); // 全選択
+                }
+            }, 0);
+        }
+
+        // 編集を保存
+        async function saveEdit(id, newText) {
+            const text = newText.trim();
+            const todo = state.todos.find(t => t.id === id);
+            
+            // 変更がない、または空の場合は編集モード終了のみ
+            if (!text || text === todo.text) {
+                cancelEdit();
+                return;
+            }
+
+            try {
+                // 楽観的更新
+                const originalText = todo.text;
+                todo.text = text;
+                state.editingId = null;
+                render();
+
+                await mockApi.update(id, { text });
+            } catch (error) {
+                // 失敗時のロールバックは少し複雑なので、エラー表示のみ行う
+                showError("編集の保存に失敗しました。");
+                // 必要ならここで再フェッチなどを呼ぶ
+            }
+        }
+
+        // 編集キャンセル
+        function cancelEdit() {
+            state.editingId = null;
+            render();
+        }
+
+        // キーボード操作 (Enterで追加)
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                addTodo();
+            }
+        }
+
+        // 編集インプットでのキー操作
+        function handleEditKeyPress(event, id) {
+            if (event.key === 'Enter') {
+                saveEdit(id, event.target.value);
+            } else if (event.key === 'Escape') {
+                cancelEdit();
+            }
+        }
+
+        // フィルター設定
+        function setFilter(filterType) {
+            state.filter = filterType;
+            
+            // ボタンのスタイル更新
+            const allBtn = document.getElementById('filter-all');
+            const activeBtn = document.getElementById('filter-active');
+            
+            if (filterType === 'all') {
+                allBtn.className = "text-lemon font-bold border-b-2 border-lemon pb-1";
+                activeBtn.className = "text-gray-500 hover:text-white transition pb-1";
+            } else {
+                allBtn.className = "text-gray-500 hover:text-white transition pb-1";
+                activeBtn.className = "text-lemon font-bold border-b-2 border-lemon pb-1";
+            }
+            
+            render();
+        }
+
+        // ==========================================
+        // UI Helpers & Rendering
+        // ==========================================
+
+        function setLoading(isLoading) {
+            state.loading = isLoading;
+            const spinner = document.getElementById('loading-spinner');
+            const list = document.getElementById('todo-list');
+            
+            if (isLoading) {
+                spinner.classList.remove('hidden');
+                // list.classList.add('opacity-50');
+            } else {
+                spinner.classList.add('hidden');
+                list.classList.remove('opacity-50');
+            }
+        }
+
+        function showError(message) {
+            const toast = document.getElementById('error-toast');
+            const msgSpan = document.getElementById('error-message');
+            msgSpan.textContent = message;
+            toast.classList.remove('hidden');
+            
+            // 3秒後に自動的に消える
+            setTimeout(() => {
+                hideError();
+            }, 5000);
+        }
+
+        function hideError() {
+            document.getElementById('error-toast').classList.add('hidden');
+        }
+
+        // メインの描画関数
+        function render() {
+            const listEl = document.getElementById('todo-list');
+            const emptyState = document.getElementById('empty-state');
+            const countEl = document.getElementById('task-count');
+
+            listEl.innerHTML = '';
+
+            // フィルタリング
+            let filteredTodos = state.todos;
+            if (state.filter === 'active') {
+                filteredTodos = state.todos.filter(t => !t.completed);
+            }
+
+            // カウント更新
+            const remaining = state.todos.filter(t => !t.completed).length;
+            countEl.textContent = `${remaining} task${remaining !== 1 ? 's' : ''} left`;
+
+            // 空の状態チェック
+            if (filteredTodos.length === 0 && !state.loading) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            // リスト生成
+            filteredTodos.forEach(todo => {
+                const li = document.createElement('li');
+                li.className = "bg-dark-card border border-gray-800 p-4 rounded flex items-center gap-4 animate-fade-in group hover:border-gray-600 transition duration-200";
+                
+                // 編集モードかどうか
+                if (state.editingId === todo.id) {
+                    li.classList.add('border-lemon'); // 編集中は枠線を黄色に
+                    li.innerHTML = `
+                        <div class="flex-1">
+                            <input type="text" 
+                                id="edit-input-${todo.id}"
+                                value="${todo.text}" 
+                                class="w-full bg-dark-input text-white px-2 py-1 rounded focus:outline-none focus:ring-1 focus:ring-lemon"
+                                onblur="saveEdit(${todo.id}, this.value)"
+                                onkeydown="handleEditKeyPress(event, ${todo.id})"
+                            >
+                            <p class="text-xs text-gray-500 mt-1">Enter to save, Esc to cancel</p>
+                        </div>
+                    `;
+                } else {
+                    // 通常表示モード
+                    li.innerHTML = `
+                        <label class="checkbox-wrapper relative flex items-center cursor-pointer">
+                            <input type="checkbox" 
+                                class="sr-only" 
+                                ${todo.completed ? 'checked' : ''} 
+                                onchange="toggleComplete(${todo.id})">
+                            <div class="w-6 h-6 border-2 border-gray-500 rounded flex items-center justify-center transition-colors">
+                                <i class="fa-solid fa-check text-black text-xs opacity-0 transition-opacity"></i>
+                            </div>
+                        </label>
+                        
+                        <span onclick="startEditing(${todo.id})" 
+                            class="flex-1 cursor-text select-none transition-all duration-300 ${todo.completed ? 'text-gray-600 line-through' : 'text-white'} hover:text-lemon">
+                            ${todo.text}
+                        </span>
+
+                        <button onclick="deleteTodo(${todo.id})" 
+                            class="text-gray-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 p-2"
+                            title="削除">
+                            <i class="fa-regular fa-trash-can"></i>
+                        </button>
+                    `;
+                }
+                
+                listEl.appendChild(li);
+            });
+        }
+
+    </script>
+</body>
+</html>

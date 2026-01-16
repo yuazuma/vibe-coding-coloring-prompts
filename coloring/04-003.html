@@ -1,0 +1,427 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fresh ToDo - シンプルなタスク管理</title>
+    
+    <!-- Tailwind CSS (スタイリング用) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts (Quicksand: 親しみやすい丸みのあるフォント) -->
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons (アイコン用) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Quicksand', 'sans-serif'],
+                    },
+                    colors: {
+                        lime: {
+                            50: '#f7fee7',
+                            100: '#ecfccb',
+                            200: '#d9f99d',
+                            300: '#bef264',
+                            400: '#a3e635',
+                            500: '#84cc16', // メインカラー
+                            600: '#65a30d',
+                            700: '#4d7c0f',
+                            800: '#3f6212',
+                            900: '#365314',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #f7fee7; /* lime-50 */
+            /* 葉っぱのような背景パターン（CSSのみで表現） */
+            background-image: radial-gradient(#d9f99d 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #84cc16;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* 完了時の取り消し線アニメーション */
+        .task-text {
+            transition: color 0.3s, text-decoration 0.3s;
+        }
+    </style>
+</head>
+<body class="text-gray-700 font-sans min-h-screen flex items-center justify-center p-4">
+
+    <!-- メインコンテナ -->
+    <main class="w-full max-w-lg bg-white rounded-3xl shadow-xl overflow-hidden border-t-8 border-lime-500">
+        
+        <!-- ヘッダーエリア -->
+        <header class="p-6 bg-gradient-to-b from-white to-lime-50">
+            <div class="flex items-center justify-between mb-2">
+                <h1 class="text-2xl font-bold text-lime-700 flex items-center gap-2">
+                    <i data-lucide="leaf" class="text-lime-500"></i>
+                    Fresh ToDo
+                </h1>
+                <!-- ローディングインジケータ -->
+                <div id="loading-indicator" class="hidden">
+                    <div class="loader"></div>
+                </div>
+            </div>
+            <p class="text-sm text-lime-600 mb-4">健康的で生産的な一日を。</p>
+
+            <!-- フィルター切り替えタブ -->
+            <div class="flex p-1 bg-lime-100 rounded-lg">
+                <button id="filter-all" class="flex-1 py-1 text-sm font-semibold rounded-md transition-colors bg-white text-lime-700 shadow-sm" onclick="setFilter('all')">
+                    すべて
+                </button>
+                <button id="filter-active" class="flex-1 py-1 text-sm font-semibold rounded-md transition-colors text-lime-600 hover:bg-white/50" onclick="setFilter('active')">
+                    未完了のみ
+                </button>
+            </div>
+        </header>
+
+        <!-- 入力エリア -->
+        <div class="px-6 pb-4">
+            <div class="relative group">
+                <input type="text" id="new-todo-input" 
+                    class="w-full pl-4 pr-12 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:outline-none focus:border-lime-400 focus:bg-white transition-all placeholder-gray-400"
+                    placeholder="新しいタスクを追加 (例: 朝のヨガ)..."
+                    onkeypress="handleEnter(event)">
+                <button onclick="addTodo()" 
+                    class="absolute right-2 top-2 bottom-2 aspect-square bg-lime-500 hover:bg-lime-600 text-white rounded-lg flex items-center justify-center transition-transform active:scale-95 shadow-md group-focus-within:shadow-lg">
+                    <i data-lucide="plus" size="20"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- エラーメッセージ表示エリア -->
+        <div id="error-container" class="px-6 hidden">
+            <div class="bg-red-50 text-red-600 text-sm p-3 rounded-lg border border-red-100 flex items-center gap-2 mb-4 animate-pulse">
+                <i data-lucide="alert-circle" size="16"></i>
+                <span id="error-message">エラーが発生しました。</span>
+            </div>
+        </div>
+
+        <!-- タスクリスト -->
+        <div class="px-2 pb-6">
+            <ul id="todo-list" class="space-y-2 h-96 overflow-y-auto pr-2 custom-scrollbar">
+                <!-- ここにJSでリストが挿入されます -->
+            </ul>
+            
+            <!-- 空の状態の表示 -->
+            <div id="empty-state" class="hidden flex-col items-center justify-center h-64 text-center text-gray-400">
+                <div class="bg-lime-50 p-4 rounded-full mb-3">
+                    <i data-lucide="smile" size="48" class="text-lime-300"></i>
+                </div>
+                <p>タスクはありません。<br>素晴らしい！</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- JavaScript ロジック -->
+    <script>
+        // --- 状態管理 ---
+        let todos = [];
+        let currentFilter = 'all'; // 'all' or 'active'
+        let isLoading = false;
+
+        // ダミーデータ (要件: 5件)
+        const DUMMY_DATA = [
+            { id: 1, text: "オーガニック野菜を買いに行く", completed: false },
+            { id: 2, text: "朝のストレッチと瞑想", completed: true },
+            { id: 3, text: "水を2リットル飲む", completed: false },
+            { id: 4, text: "新しいレシピ本を読む", completed: false },
+            { id: 5, text: "観葉植物に水をやる", completed: true }
+        ];
+
+        // --- 初期化 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            fetchTodos(); // アプリ起動時にデータ取得シミュレーション
+        });
+
+        // --- API シミュレーション (非同期処理とエラーハンドリング) ---
+        // 実際のAPIコールの代わりに、遅延とランダムなエラーをシミュレートします
+        const simulateApiCall = (callback) => {
+            return new Promise((resolve, reject) => {
+                setLoading(true);
+                setError(null); // エラーをクリア
+
+                setTimeout(() => {
+                    // 5%の確率でエラーを発生させる（エラーハンドリング動作確認用）
+                    // 確実にエラーを見たい場合はここを Math.random() < 1.0 にしてください
+                    const shouldFail = Math.random() < 0.05; 
+                    
+                    setLoading(false);
+                    if (shouldFail) {
+                        reject(new Error("通信エラーが発生しました。しばらくしてから再試行してください。"));
+                    } else {
+                        resolve(callback());
+                    }
+                }, 600); // 0.6秒の通信ラグを演出
+            });
+        };
+
+        // --- データ操作 ---
+
+        // データの取得
+        async function fetchTodos() {
+            try {
+                // 本来はここで fetch('/api/todos') などを行う
+                const data = await simulateApiCall(() => [...DUMMY_DATA]);
+                todos = data;
+                render();
+            } catch (error) {
+                setError("データの取得に失敗しました: " + error.message);
+                // 取得失敗時は空のリストを表示しないように、あるいはリトライボタンを出すなどの処理が考えられますが
+                // ここでは現状維持または空リストとします
+                document.getElementById('empty-state').classList.remove('hidden');
+                document.getElementById('empty-state').querySelector('p').innerText = "データの読み込みに失敗しました。";
+            }
+        }
+
+        // タスクの追加
+        async function addTodo() {
+            const input = document.getElementById('new-todo-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            try {
+                const newTodo = { id: Date.now(), text: text, completed: false };
+                await simulateApiCall(() => {
+                    todos.unshift(newTodo); // リストの先頭に追加
+                    return newTodo;
+                });
+                input.value = '';
+                render();
+            } catch (error) {
+                setError("タスクの作成に失敗しました。もう一度お試しください。");
+            }
+        }
+
+        // キーボード操作対応
+        function handleEnter(event) {
+            if (event.key === 'Enter') {
+                addTodo();
+            }
+        }
+
+        // 完了状態の切り替え
+        async function toggleComplete(id) {
+            try {
+                await simulateApiCall(() => {
+                    const todo = todos.find(t => t.id === id);
+                    if (todo) todo.completed = !todo.completed;
+                });
+                render();
+            } catch (error) {
+                setError("ステータスの更新に失敗しました。");
+            }
+        }
+
+        // タスクの削除
+        async function deleteTodo(id) {
+            // 削除前の確認（UX向上）
+            if(!confirm("このタスクを削除してもよろしいですか？")) return;
+
+            try {
+                await simulateApiCall(() => {
+                    todos = todos.filter(t => t.id !== id);
+                });
+                render();
+            } catch (error) {
+                setError("削除に失敗しました。");
+            }
+        }
+
+        // タスクの編集（テキストクリックで呼び出し）
+        function enableEditMode(id) {
+            const todo = todos.find(t => t.id === id);
+            if (!todo) return;
+
+            const li = document.getElementById(`todo-item-${id}`);
+            const span = li.querySelector('.task-text');
+            const originalText = todo.text;
+
+            // テキスト部分を入力フォームに置換
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = originalText;
+            input.className = "flex-1 ml-3 px-2 py-1 border-b-2 border-lime-400 focus:outline-none bg-white/50 text-gray-800";
+            
+            // フォーカスが外れたら保存
+            input.onblur = async () => {
+                await saveEdit(id, input.value, originalText);
+            };
+            // Enterキーで保存
+            input.onkeypress = async (e) => {
+                if (e.key === 'Enter') {
+                    input.blur();
+                }
+            };
+
+            // HTML要素を入れ替え
+            span.replaceWith(input);
+            input.focus();
+        }
+
+        // 編集の保存
+        async function saveEdit(id, newText, oldText) {
+            const trimmedText = newText.trim();
+            
+            if (trimmedText === oldText || trimmedText === "") {
+                render(); // 変更なしか空の場合は元に戻す（再描画）
+                return;
+            }
+
+            try {
+                await simulateApiCall(() => {
+                    const todo = todos.find(t => t.id === id);
+                    if (todo) todo.text = trimmedText;
+                });
+                render();
+            } catch (error) {
+                setError("編集の保存に失敗しました。");
+                render(); // エラー時は元の表示に戻す
+            }
+        }
+
+        // --- フィルター機能 ---
+        function setFilter(filterType) {
+            currentFilter = filterType;
+            
+            // タブのスタイル切り替え
+            const btnAll = document.getElementById('filter-all');
+            const btnActive = document.getElementById('filter-active');
+            
+            if (filterType === 'all') {
+                btnAll.className = "flex-1 py-1 text-sm font-semibold rounded-md transition-colors bg-white text-lime-700 shadow-sm";
+                btnActive.className = "flex-1 py-1 text-sm font-semibold rounded-md transition-colors text-lime-600 hover:bg-white/50";
+            } else {
+                btnAll.className = "flex-1 py-1 text-sm font-semibold rounded-md transition-colors text-lime-600 hover:bg-white/50";
+                btnActive.className = "flex-1 py-1 text-sm font-semibold rounded-md transition-colors bg-white text-lime-700 shadow-sm";
+            }
+            
+            render();
+        }
+
+        // --- UIレンダリング ---
+        function render() {
+            const listEl = document.getElementById('todo-list');
+            const emptyState = document.getElementById('empty-state');
+            
+            listEl.innerHTML = '';
+
+            // フィルタリング
+            const filteredTodos = todos.filter(todo => {
+                if (currentFilter === 'active') return !todo.completed;
+                return true;
+            });
+
+            // 空の状態判定
+            if (filteredTodos.length === 0) {
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+            } else {
+                emptyState.classList.add('hidden');
+                emptyState.classList.remove('flex');
+            }
+
+            // リスト生成
+            filteredTodos.forEach(todo => {
+                const li = document.createElement('li');
+                li.id = `todo-item-${todo.id}`;
+                li.className = `group flex items-center p-3 mb-2 rounded-xl border border-transparent transition-all hover:shadow-sm ${todo.completed ? 'bg-gray-50' : 'bg-white border-gray-100'}`;
+                
+                // チェックボックス（カスタムデザイン）
+                const checkboxClass = todo.completed 
+                    ? "bg-lime-500 border-lime-500 text-white" 
+                    : "bg-white border-gray-300 text-transparent hover:border-lime-400";
+                
+                // テキストスタイル
+                const textClass = todo.completed 
+                    ? "text-gray-400 line-through decoration-lime-500/50" 
+                    : "text-gray-700 font-medium";
+
+                li.innerHTML = `
+                    <button onclick="toggleComplete(${todo.id})" 
+                        class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${checkboxClass}">
+                        <i data-lucide="check" size="14" stroke-width="3"></i>
+                    </button>
+                    
+                    <span class="task-text flex-1 ml-3 cursor-pointer select-none ${textClass}" 
+                          onclick="enableEditMode(${todo.id})" title="クリックして編集">
+                        ${escapeHtml(todo.text)}
+                    </span>
+                    
+                    <button onclick="deleteTodo(${todo.id})" 
+                        class="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                        title="削除">
+                        <i data-lucide="trash-2" size="18"></i>
+                    </button>
+                `;
+                
+                listEl.appendChild(li);
+            });
+
+            // アイコン再描画
+            lucide.createIcons();
+        }
+
+        // --- ユーティリティ ---
+
+        // XSS対策
+        function escapeHtml(unsafe) {
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+
+        // ローディング表示制御
+        function setLoading(loading) {
+            isLoading = loading;
+            const indicator = document.getElementById('loading-indicator');
+            if (loading) {
+                indicator.classList.remove('hidden');
+            } else {
+                indicator.classList.add('hidden');
+            }
+        }
+
+        // エラー表示制御
+        function setError(msg) {
+            const container = document.getElementById('error-container');
+            const messageEl = document.getElementById('error-message');
+            
+            if (msg) {
+                messageEl.textContent = msg;
+                container.classList.remove('hidden');
+                // 5秒後に自動で消える
+                setTimeout(() => {
+                    container.classList.add('hidden');
+                }, 5000);
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
+    </script>
+</body>
+</html>

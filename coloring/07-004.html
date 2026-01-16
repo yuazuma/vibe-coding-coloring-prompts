@@ -1,0 +1,627 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hygge ToDo</title>
+    <style>
+        /* --- CSS Variables & Reset --- */
+        :root {
+            /* Palette: Hygge Inspired */
+            --bg-color: #F7F5F0;       /* Warm Cream */
+            --card-bg: #FFFFFF;        /* White */
+            --text-main: #4A4A4A;      /* Soft Charcoal */
+            --text-muted: #8C8C8C;     /* Light Gray */
+            --accent-blue: #A0C1D1;    /* Pale Blue */
+            --accent-blue-dark: #7FA5B8;
+            --wood-color: #D4A373;     /* Wood tone */
+            --wood-dark: #B08255;
+            --error-color: #E07A5F;    /* Soft Red */
+            --border-radius: 12px;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* --- Layout --- */
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin-top: 40px;
+        }
+
+        /* --- Header --- */
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-weight: 300;
+            color: var(--text-main);
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+        }
+
+        /* --- Filter Controls --- */
+        .controls {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 15px;
+        }
+
+        .filter-toggle {
+            background: none;
+            border: 2px solid var(--accent-blue);
+            color: var(--accent-blue-dark);
+            padding: 6px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+
+        .filter-toggle.active {
+            background-color: var(--accent-blue);
+            color: white;
+        }
+
+        .filter-toggle:hover {
+            opacity: 0.9;
+        }
+
+        /* --- Input Area --- */
+        .input-group {
+            display: flex;
+            background: var(--card-bg);
+            padding: 10px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 25px;
+        }
+
+        input[type="text"] {
+            flex-grow: 1;
+            border: none;
+            padding: 12px;
+            font-size: 1rem;
+            outline: none;
+            color: var(--text-main);
+        }
+
+        input[type="text"]::placeholder {
+            color: #ccc;
+        }
+
+        .btn-add {
+            background-color: var(--wood-color);
+            color: white;
+            border: none;
+            padding: 0 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+
+        .btn-add:hover {
+            background-color: var(--wood-dark);
+        }
+
+        /* --- ToDo List --- */
+        .todo-list {
+            list-style: none;
+        }
+
+        .todo-item {
+            background: var(--card-bg);
+            margin-bottom: 12px;
+            padding: 16px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: var(--transition);
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .todo-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        .todo-left {
+            display: flex;
+            align-items: center;
+            flex-grow: 1;
+            /* 編集時のinput幅確保のため */
+            overflow: hidden; 
+        }
+
+        /* Checkbox Customization */
+        .checkbox-wrapper {
+            position: relative;
+            margin-right: 15px;
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .checkbox-wrapper input {
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            position: absolute;
+            z-index: 2;
+        }
+
+        .custom-checkbox {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--accent-blue);
+            border-radius: 50%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .checkbox-wrapper input:checked + .custom-checkbox {
+            background-color: var(--accent-blue);
+        }
+
+        .checkbox-wrapper input:checked + .custom-checkbox::after {
+            content: '?';
+            color: white;
+            font-size: 14px;
+        }
+
+        /* Task Text */
+        .todo-text {
+            cursor: pointer;
+            font-size: 1rem;
+            transition: color 0.3s;
+            word-break: break-all;
+            padding: 4px;
+            border-radius: 4px;
+            border: 1px solid transparent;
+        }
+        
+        .todo-text:hover {
+            background-color: #f9f9f9;
+        }
+
+        .todo-item.completed .todo-text {
+            color: var(--text-muted);
+            text-decoration: line-through;
+        }
+
+        /* Editing Mode */
+        .edit-input {
+            width: 100%;
+            font-size: 1rem;
+            padding: 4px 8px;
+            border: 1px solid var(--accent-blue);
+            border-radius: 4px;
+            outline: none;
+            color: var(--text-main);
+        }
+
+        /* Delete Button */
+        .btn-delete {
+            background: none;
+            border: none;
+            color: #d1d1d1;
+            cursor: pointer;
+            font-size: 1.2rem;
+            margin-left: 15px;
+            transition: var(--transition);
+            padding: 4px;
+        }
+
+        .btn-delete:hover {
+            color: var(--error-color);
+        }
+
+        /* --- Empty State --- */
+        .empty-state {
+            text-align: center;
+            color: var(--text-muted);
+            margin-top: 50px;
+            font-size: 0.9rem;
+        }
+
+        /* --- Toast Notification (Error Handling) --- */
+        #toast-container {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+        }
+
+        .toast {
+            background-color: #ff6b6b;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 30px;
+            margin-top: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            animation: slideUp 0.3s ease;
+        }
+
+        .toast.success {
+            background-color: var(--wood-color);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- Responsive --- */
+        @media (max-width: 480px) {
+            h1 { font-size: 1.5rem; }
+            .btn-add { padding: 0 16px; }
+            .container { margin-top: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>My Simple ToDo</h1>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">心地よい毎日を、ひとつずつ。</p>
+    </header>
+
+    <div class="controls">
+        <button id="filterBtn" class="filter-toggle" onclick="app.toggleFilter()">
+            未完了のみを表示
+        </button>
+    </div>
+
+    <div class="input-group">
+        <input type="text" id="todoInput" placeholder="新しいタスクを入力..." onkeypress="app.handleKeyPress(event)">
+        <button class="btn-add" onclick="app.addTodo()">追加</button>
+    </div>
+
+    <ul id="todoList" class="todo-list">
+        <!-- JS will populate this -->
+    </ul>
+
+    <div id="emptyState" class="empty-state" style="display: none;">
+        タスクはありません。<br>ゆっくりコーヒーでもいかがですか？
+    </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+    /**
+     * Application Logic
+     */
+    const app = {
+        data: [],
+        filterIncomplete: false,
+        
+        // Configuration
+        STORAGE_KEY: 'hygge_todo_data',
+        
+        /**
+         * Initialize application
+         */
+        init() {
+            this.loadData();
+            this.render();
+        },
+
+        /**
+         * Mock API Call wrapper to simulate network errors
+         * (5% chance of failure to demonstrate error handling)
+         */
+        async mockApiCall(actionName, callback) {
+            return new Promise((resolve, reject) => {
+                // Simulate network latency
+                setTimeout(() => {
+                    // 5% chance of error
+                    const shouldFail = Math.random() < 0.05; 
+                    
+                    if (shouldFail) {
+                        reject(`${actionName}に失敗しました。もう一度お試しください。`);
+                    } else {
+                        try {
+                            const result = callback();
+                            this.saveToStorage();
+                            resolve(result);
+                        } catch (e) {
+                            reject(`予期せぬエラーが発生しました: ${e.message}`);
+                        }
+                    }
+                }, 100); // 100ms latency
+            });
+        },
+
+        /**
+         * Load data from localStorage or set dummy data
+         */
+        loadData() {
+            try {
+                const stored = localStorage.getItem(this.STORAGE_KEY);
+                if (stored) {
+                    this.data = JSON.parse(stored);
+                } else {
+                    // Initial Dummy Data
+                    this.data = [
+                        { id: crypto.randomUUID(), text: '観葉植物に水をやる', completed: false },
+                        { id: crypto.randomUUID(), text: 'お気に入りの本を読む', completed: true },
+                        { id: crypto.randomUUID(), text: '週末の夕食の買い物リストを作る', completed: false },
+                        { id: crypto.randomUUID(), text: '新しいコーヒー豆を買う', completed: false },
+                        { id: crypto.randomUUID(), text: 'デスク周りを整理整頓する', completed: true },
+                    ];
+                    this.saveToStorage();
+                }
+            } catch (e) {
+                this.showToast('データの読み込みに失敗しました。', true);
+            }
+        },
+
+        /**
+         * Save current state to localStorage
+         */
+        saveToStorage() {
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.data));
+        },
+
+        /**
+         * Add a new ToDo item
+         */
+        async addTodo() {
+            const input = document.getElementById('todoInput');
+            const text = input.value.trim();
+
+            if (!text) return;
+
+            try {
+                await this.mockApiCall('追加', () => {
+                    const newItem = {
+                        id: crypto.randomUUID(),
+                        text: text,
+                        completed: false
+                    };
+                    this.data.unshift(newItem); // Add to top
+                });
+                input.value = '';
+                this.render();
+            } catch (error) {
+                this.showToast(error, true);
+            }
+        },
+
+        /**
+         * Handle Enter key in input
+         */
+        handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                this.addTodo();
+            }
+        },
+
+        /**
+         * Toggle completion status
+         */
+        async toggleComplete(id) {
+            try {
+                await this.mockApiCall('更新', () => {
+                    const item = this.data.find(d => d.id === id);
+                    if (item) {
+                        item.completed = !item.completed;
+                    }
+                });
+                this.render();
+            } catch (error) {
+                this.showToast(error, true);
+                // Revert UI change by re-rendering
+                this.render();
+            }
+        },
+
+        /**
+         * Delete a ToDo item
+         */
+        async deleteTodo(id) {
+            if (!confirm('このタスクを削除してもよろしいですか？')) return;
+
+            try {
+                await this.mockApiCall('削除', () => {
+                    this.data = this.data.filter(d => d.id !== id);
+                });
+                this.render();
+            } catch (error) {
+                this.showToast(error, true);
+            }
+        },
+
+        /**
+         * Enable edit mode for an item
+         */
+        editMode(id) {
+            const item = this.data.find(d => d.id === id);
+            if (!item || item.completed) return; // Cannot edit completed items (optional rule)
+
+            const listEl = document.getElementById('todoList');
+            const itemEl = document.getElementById(`item-${id}`);
+            const textEl = itemEl.querySelector('.todo-text');
+
+            // Create input element
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'edit-input';
+            input.value = item.text;
+            
+            // Replace text with input
+            textEl.replaceWith(input);
+            input.focus();
+
+            // Handle save on blur or enter
+            const saveEdit = async () => {
+                const newText = input.value.trim();
+                if (newText && newText !== item.text) {
+                    try {
+                        await this.mockApiCall('編集', () => {
+                            item.text = newText;
+                        });
+                    } catch (error) {
+                        this.showToast(error, true);
+                    }
+                }
+                this.render(); // Re-render to switch back to text view
+            };
+
+            input.addEventListener('blur', saveEdit);
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    input.blur(); // Triggers saveEdit
+                }
+            });
+        },
+
+        /**
+         * Toggle filter state
+         */
+        toggleFilter() {
+            this.filterIncomplete = !this.filterIncomplete;
+            
+            const btn = document.getElementById('filterBtn');
+            if (this.filterIncomplete) {
+                btn.classList.add('active');
+                btn.textContent = 'すべて表示';
+            } else {
+                btn.classList.remove('active');
+                btn.textContent = '未完了のみを表示';
+            }
+            this.render();
+        },
+
+        /**
+         * Render the list based on data and filter
+         */
+        render() {
+            const listEl = document.getElementById('todoList');
+            const emptyStateEl = document.getElementById('emptyState');
+            
+            listEl.innerHTML = '';
+
+            const filteredData = this.filterIncomplete
+                ? this.data.filter(item => !item.completed)
+                : this.data;
+
+            if (filteredData.length === 0) {
+                emptyStateEl.style.display = 'block';
+                if (this.filterIncomplete && this.data.length > 0) {
+                    emptyStateEl.innerHTML = "未完了のタスクはありません。<br>素晴らしい！";
+                } else if (this.data.length === 0) {
+                     emptyStateEl.innerHTML = "タスクはありません。<br>ゆっくりコーヒーでもいかがですか？";
+                }
+            } else {
+                emptyStateEl.style.display = 'none';
+                
+                filteredData.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = `todo-item ${item.completed ? 'completed' : ''}`;
+                    li.id = `item-${item.id}`;
+
+                    // HTML Structure construction
+                    li.innerHTML = `
+                        <div class="todo-left">
+                            <div class="checkbox-wrapper">
+                                <input type="checkbox" 
+                                    ${item.completed ? 'checked' : ''} 
+                                    onchange="app.toggleComplete('${item.id}')"
+                                    aria-label="完了にする"
+                                >
+                                <span class="custom-checkbox"></span>
+                            </div>
+                            <span class="todo-text" onclick="app.editMode('${item.id}')" title="クリックして編集">
+                                ${this.escapeHtml(item.text)}
+                            </span>
+                        </div>
+                        <button class="btn-delete" onclick="app.deleteTodo('${item.id}')" title="削除">
+                            &times;
+                        </button>
+                    `;
+                    listEl.appendChild(li);
+                });
+            }
+        },
+
+        /**
+         * Utility: Escape HTML to prevent XSS
+         */
+        escapeHtml(unsafe) {
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        },
+
+        /**
+         * Utility: Show toast notification
+         */
+        showToast(message, isError = false) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${isError ? 'error' : 'success'}`;
+            toast.textContent = message;
+
+            container.appendChild(toast);
+
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    container.removeChild(toast);
+                }, 300);
+            }, 3000);
+        }
+    };
+
+    // Initialize on load
+    window.addEventListener('DOMContentLoaded', () => app.init());
+
+</script>
+</body>
+</html>

@@ -1,0 +1,449 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dreamy ToDo - 夢かわいいタスク管理</title>
+    
+    <!-- Google Fonts: 丸みのある可愛いフォント -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Tailwind Config for Custom Colors -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"M PLUS Rounded 1c"', 'sans-serif'],
+                    },
+                    colors: {
+                        dream: {
+                            pink: '#FFD1DC',    // パステルピンク
+                            blue: '#D1E8FF',    // パステルブルー
+                            lavender: '#E6E6FA',// ラベンダー
+                            text: '#5D5D81',    // 柔らかいグレー紫
+                            accent: '#FF9EAA',  // アクセントピンク
+                        }
+                    },
+                    animation: {
+                        'float': 'float 3s ease-in-out infinite',
+                        'pop': 'pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-5px)' },
+                        },
+                        pop: {
+                            '0%': { transform: 'scale(0.9)', opacity: 0 },
+                            '100%': { transform: 'scale(1)', opacity: 1 },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* 背景のグラデーションとパターン */
+        body {
+            background: linear-gradient(135deg, #FFD1DC 0%, #D1E8FF 50%, #E6E6FA 100%);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            min-height: 100vh;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* カスタムスクロールバー */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 158, 170, 0.5);
+            border-radius: 10px;
+        }
+
+        /* 完了済みタスクの取り消し線アニメーション */
+        .line-through-animated {
+            position: relative;
+            opacity: 0.6;
+            transition: opacity 0.3s;
+        }
+        .line-through-animated::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 100%;
+            height: 2px;
+            background: #FF9EAA;
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease-in-out;
+        }
+        .completed .line-through-animated::after {
+            transform: scaleX(1);
+        }
+
+        /* トースト通知 */
+        #toast-container {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+        .toast {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 24px;
+            border-radius: 50px;
+            box-shadow: 0 4px 15px rgba(255, 158, 170, 0.3);
+            font-weight: bold;
+            color: #FF6B81;
+            transform: translateY(20px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            pointer-events: auto;
+            border: 2px solid #FFD1DC;
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="text-dream-text font-sans p-4 flex items-center justify-center">
+
+    <!-- メインコンテナ: 雲のようなふわふわしたカード -->
+    <div class="w-full max-w-md bg-white/80 backdrop-blur-md rounded-[30px] shadow-[0_10px_40px_rgba(255,209,220,0.6)] border border-white p-6 relative overflow-hidden animate-pop">
+        
+        <!-- ヘッダー -->
+        <header class="text-center mb-8 relative z-10">
+            <div class="inline-block p-3 rounded-full bg-gradient-to-tr from-dream-pink to-dream-lavender text-white shadow-lg mb-2 animate-float">
+                <i data-lucide="cloud-moon" class="w-8 h-8"></i>
+            </div>
+            <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-400 to-purple-400">
+                Dreamy ToDo
+            </h1>
+            <p class="text-sm text-gray-400 mt-1">今日の小さな魔法 ?</p>
+        </header>
+
+        <!-- 入力エリア -->
+        <div class="mb-6 relative group z-10">
+            <form id="todo-form" class="flex gap-2">
+                <input 
+                    type="text" 
+                    id="todo-input"
+                    placeholder="新しい夢を追加する..." 
+                    class="w-full pl-5 pr-4 py-3 rounded-full border-2 border-dream-blue bg-white focus:outline-none focus:border-dream-accent focus:ring-4 focus:ring-dream-pink/30 transition-all placeholder-gray-300 shadow-sm"
+                    autocomplete="off"
+                >
+                <button 
+                    type="submit" 
+                    class="bg-gradient-to-r from-dream-pink to-dream-accent text-white p-3 rounded-full hover:shadow-lg hover:scale-105 active:scale-95 transition-all shadow-md flex-shrink-0"
+                    aria-label="追加"
+                >
+                    <i data-lucide="plus" class="w-6 h-6"></i>
+                </button>
+            </form>
+        </div>
+
+        <!-- フィルタータブ -->
+        <div class="flex justify-center mb-4 bg-dream-blue/30 p-1 rounded-full relative z-10">
+            <button 
+                onclick="setFilter('all')" 
+                id="filter-all"
+                class="flex-1 py-1.5 px-4 rounded-full text-sm font-bold transition-all bg-white text-dream-accent shadow-sm"
+            >
+                すべて
+            </button>
+            <button 
+                onclick="setFilter('active')" 
+                id="filter-active"
+                class="flex-1 py-1.5 px-4 rounded-full text-sm font-bold transition-all text-gray-500 hover:text-dream-accent"
+            >
+                未完了のみ
+            </button>
+        </div>
+
+        <!-- タスク一覧 -->
+        <ul id="todo-list" class="space-y-3 max-h-[60vh] overflow-y-auto pr-1 pb-4 relative z-10">
+            <!-- JavaScriptでここにリストアイテムが描画されます -->
+        </ul>
+
+        <!-- 空の状態表示 -->
+        <div id="empty-state" class="hidden text-center py-10 text-gray-400">
+            <i data-lucide="sparkles" class="w-10 h-10 mx-auto mb-2 text-dream-pink opacity-50"></i>
+            <p>タスクはありません。<br>ゆっくり休みましょう ??</p>
+        </div>
+
+        <!-- 背景の装飾 (ぼやけた円) -->
+        <div class="absolute -top-10 -right-10 w-32 h-32 bg-dream-pink rounded-full blur-3xl opacity-40 pointer-events-none"></div>
+        <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-dream-blue rounded-full blur-3xl opacity-40 pointer-events-none"></div>
+    </div>
+
+    <!-- エラーメッセージ表示用のコンテナ -->
+    <div id="toast-container"></div>
+
+    <script>
+        // --- 状態管理 ---
+        const state = {
+            todos: [],
+            filter: 'all', // 'all' or 'active'
+        };
+
+        // --- 初期データ (ダミーデータ) ---
+        const initialData = [
+            { id: '1', text: 'ふわふわのパンケーキを焼く ??', completed: false },
+            { id: '2', text: '星空の観察をする ??', completed: true },
+            { id: '3', text: 'ユニコーンのぬいぐるみを探す ??', completed: false },
+            { id: '4', text: 'ラベンダーティーを飲む ?', completed: false },
+            { id: '5', text: '魔法の呪文を覚える ?', completed: true },
+        ];
+
+        // --- DOM要素 ---
+        const todoForm = document.getElementById('todo-form');
+        const todoInput = document.getElementById('todo-input');
+        const todoList = document.getElementById('todo-list');
+        const emptyState = document.getElementById('empty-state');
+        const filterAllBtn = document.getElementById('filter-all');
+        const filterActiveBtn = document.getElementById('filter-active');
+        const toastContainer = document.getElementById('toast-container');
+
+        // --- 初期化 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // データ取得のシミュレーション (エラーハンドリングUIのデモのためtry-catch)
+            try {
+                // ローカルストレージがあれば読み込む、なければダミーデータ
+                const saved = localStorage.getItem('dreamyTodos');
+                if (saved) {
+                    state.todos = JSON.parse(saved);
+                } else {
+                    state.todos = [...initialData];
+                }
+                render();
+            } catch (error) {
+                showError('データの読み込みに失敗しました ??');
+            }
+        });
+
+        // --- イベントリスナー ---
+        todoForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = todoInput.value.trim();
+            if (text) {
+                addTodo(text);
+                todoInput.value = '';
+            } else {
+                // 空文字入力のエラーハンドリング例
+                showError('タスクの内容を入力してね！ ?');
+            }
+        });
+
+        // --- ロジック関数 ---
+
+        function saveData() {
+            try {
+                localStorage.setItem('dreamyTodos', JSON.stringify(state.todos));
+            } catch (error) {
+                showError('保存に失敗しました... ??');
+            }
+        }
+
+        function addTodo(text) {
+            const newTodo = {
+                id: crypto.randomUUID(),
+                text: text,
+                completed: false
+            };
+            state.todos.unshift(newTodo); // 新しいものを上に
+            saveData();
+            render();
+            showSuccess('新しい夢を追加しました！');
+        }
+
+        function toggleComplete(id) {
+            const todo = state.todos.find(t => t.id === id);
+            if (todo) {
+                todo.completed = !todo.completed;
+                saveData();
+                render();
+            }
+        }
+
+        function deleteTodo(id) {
+            state.todos = state.todos.filter(t => t.id !== id);
+            saveData();
+            render();
+        }
+
+        // 編集モードの開始
+        function startEdit(id, textElement) {
+            const todo = state.todos.find(t => t.id === id);
+            if (!todo) return;
+
+            // テキスト要素をインプット要素に置換
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = todo.text;
+            input.className = 'w-full bg-white/50 border-b-2 border-dream-accent focus:outline-none text-dream-text px-1 py-0.5 rounded';
+            
+            // フォーカスが外れたら保存
+            input.onblur = () => finishEdit(id, input.value);
+            
+            // Enterキーで保存
+            input.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    input.blur();
+                }
+            };
+
+            textElement.replaceWith(input);
+            input.focus();
+        }
+
+        function finishEdit(id, newText) {
+            const todo = state.todos.find(t => t.id === id);
+            if (todo && newText.trim() !== '') {
+                todo.text = newText.trim();
+                saveData();
+            }
+            render(); // 再描画して表示を元に戻す
+        }
+
+        function setFilter(filterType) {
+            state.filter = filterType;
+            
+            // タブのスタイル更新
+            if (filterType === 'all') {
+                filterAllBtn.className = 'flex-1 py-1.5 px-4 rounded-full text-sm font-bold transition-all bg-white text-dream-accent shadow-sm';
+                filterActiveBtn.className = 'flex-1 py-1.5 px-4 rounded-full text-sm font-bold transition-all text-gray-500 hover:text-dream-accent';
+            } else {
+                filterAllBtn.className = 'flex-1 py-1.5 px-4 rounded-full text-sm font-bold transition-all text-gray-500 hover:text-dream-accent';
+                filterActiveBtn.className = 'flex-1 py-1.5 px-4 rounded-full text-sm font-bold transition-all bg-white text-dream-accent shadow-sm';
+            }
+            
+            render();
+        }
+
+        // --- 描画関数 ---
+
+        function render() {
+            todoList.innerHTML = '';
+
+            const filteredTodos = state.todos.filter(todo => {
+                if (state.filter === 'active') return !todo.completed;
+                return true;
+            });
+
+            if (filteredTodos.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            filteredTodos.forEach(todo => {
+                const li = document.createElement('li');
+                li.className = `group flex items-center gap-3 bg-white p-3 rounded-2xl shadow-sm border border-transparent hover:border-dream-pink/50 transition-all ${todo.completed ? 'completed bg-gray-50' : ''}`;
+                
+                // チェックボックス（カスタム）
+                const checkBtn = document.createElement('button');
+                checkBtn.className = `w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+                    todo.completed 
+                    ? 'bg-dream-accent border-dream-accent text-white' 
+                    : 'border-dream-blue text-transparent hover:border-dream-accent'
+                }`;
+                checkBtn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i>';
+                checkBtn.onclick = () => toggleComplete(todo.id);
+
+                // テキスト
+                const span = document.createElement('span');
+                span.className = 'flex-1 cursor-text line-through-animated select-none';
+                span.textContent = todo.text;
+                // テキストクリックで編集モードへ
+                span.onclick = () => startEdit(todo.id, span);
+
+                // 削除ボタン
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1';
+                deleteBtn.innerHTML = '<i data-lucide="trash-2" class="w-4 h-4"></i>';
+                deleteBtn.onclick = () => {
+                    if(confirm('この夢を消しちゃいますか？ ??')) {
+                        deleteTodo(todo.id);
+                    }
+                };
+
+                li.appendChild(checkBtn);
+                li.appendChild(span);
+                li.appendChild(deleteBtn);
+                todoList.appendChild(li);
+            });
+
+            // アイコンの再描画
+            lucide.createIcons();
+        }
+
+        // --- エラーハンドリング / 通知UI ---
+
+        function showError(message) {
+            showToast(message, 'error');
+        }
+
+        function showSuccess(message) {
+            showToast(message, 'success');
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            
+            // 色の調整
+            if (type === 'error') {
+                toast.style.color = '#FF6B81'; // 濃いピンク
+                toast.innerHTML = `<span class="flex items-center gap-2"><i data-lucide="alert-circle" class="w-4 h-4"></i> ${message}</span>`;
+            } else {
+                toast.style.color = '#88D1F1'; // 濃い水色
+                toast.innerHTML = `<span class="flex items-center gap-2"><i data-lucide="sparkles" class="w-4 h-4"></i> ${message}</span>`;
+            }
+
+            toastContainer.appendChild(toast);
+            lucide.createIcons();
+
+            // アニメーション用
+            requestAnimationFrame(() => {
+                toast.classList.add('show');
+            });
+
+            // 3秒後に消える
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 3000);
+        }
+
+    </script>
+</body>
+</html>

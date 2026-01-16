@@ -1,0 +1,512 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Midnight Tasks</title>
+    <!-- Google Fonts for Neon/Elegant look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Sacramento&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-dark: #0f0518;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --neon-pink: #ff00ff;
+            --neon-purple: #bd00ff;
+            --neon-blue: #00ffff;
+            --text-main: #ffffff;
+            --text-dim: #b3b3b3;
+            --danger: #ff3366;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            background-image: radial-gradient(circle at 50% 0%, #2a0e45 0%, #0f0518 70%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* Container with Glassmorphism */
+        .app-container {
+            width: 100%;
+            max-width: 600px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 0 40px rgba(189, 0, 255, 0.15), inset 0 0 20px rgba(255, 0, 255, 0.05);
+        }
+
+        /* Header / Title */
+        h1 {
+            font-family: 'Sacramento', cursive;
+            font-size: 3.5rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            color: #fff;
+            text-shadow: 
+                0 0 5px #fff,
+                0 0 10px #fff,
+                0 0 20px var(--neon-pink),
+                0 0 40px var(--neon-purple);
+            font-weight: 400;
+        }
+
+        /* Input Section */
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--neon-purple);
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: #fff;
+            font-size: 1rem;
+            outline: none;
+            transition: box-shadow 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            box-shadow: 0 0 15px rgba(189, 0, 255, 0.4);
+        }
+
+        button.add-btn {
+            background: linear-gradient(45deg, var(--neon-purple), var(--neon-pink));
+            border: none;
+            border-radius: 8px;
+            padding: 0 24px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: transform 0.2s, box-shadow 0.3s;
+            box-shadow: 0 0 10px rgba(255, 0, 255, 0.3);
+        }
+
+        button.add-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.6);
+        }
+
+        /* Filter Controls */
+        .filters {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 1.5rem;
+        }
+
+        .filter-btn {
+            background: transparent;
+            border: 1px solid var(--glass-border);
+            color: var(--text-dim);
+            padding: 6px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn.active, .filter-btn:hover {
+            color: #fff;
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 10px var(--neon-blue), inset 0 0 5px var(--neon-blue);
+            text-shadow: 0 0 5px var(--neon-blue);
+        }
+
+        /* Todo List */
+        ul {
+            list-style: none;
+        }
+
+        .todo-item {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.03);
+            margin-bottom: 10px;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 3px solid transparent;
+            transition: all 0.3s ease;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .todo-item:hover {
+            background: rgba(255, 255, 255, 0.07);
+            border-left-color: var(--neon-pink);
+        }
+
+        .todo-item.completed {
+            opacity: 0.6;
+        }
+
+        .todo-item.completed span {
+            text-decoration: line-through;
+            color: var(--text-dim);
+        }
+
+        /* Custom Checkbox */
+        .checkbox-wrapper {
+            position: relative;
+            margin-right: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+
+        .custom-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--neon-blue);
+            border-radius: 4px;
+            display: inline-block;
+            transition: all 0.2s;
+        }
+
+        .todo-item.completed .custom-checkbox {
+            background: var(--neon-blue);
+            box-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        /* Todo Text & Edit Input */
+        .todo-content {
+            flex: 1;
+            margin-right: 10px;
+            cursor: text;
+        }
+
+        .edit-input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--neon-pink);
+            color: #fff;
+            font-size: 1rem;
+            padding: 4px 0;
+            outline: none;
+        }
+
+        /* Delete Button */
+        .delete-btn {
+            background: transparent;
+            border: none;
+            color: var(--danger);
+            cursor: pointer;
+            opacity: 0.7;
+            font-size: 1.2rem;
+            transition: opacity 0.2s, text-shadow 0.2s;
+            padding: 4px;
+        }
+
+        .delete-btn:hover {
+            opacity: 1;
+            text-shadow: 0 0 8px var(--danger);
+        }
+
+        /* Toast Notification */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .toast {
+            background: rgba(20, 0, 0, 0.9);
+            border: 1px solid var(--danger);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            margin-top: 10px;
+            box-shadow: 0 0 15px rgba(255, 51, 102, 0.3);
+            display: flex;
+            align-items: center;
+            animation: slideIn 0.3s ease, fadeOut 0.5s ease 3s forwards;
+            min-width: 250px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            to { opacity: 0; visibility: hidden; }
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            h1 { font-size: 2.5rem; }
+            .app-container { padding: 1.5rem 1rem; }
+            .input-group { flex-direction: column; }
+            button.add-btn { width: 100%; padding: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <h1>Midnight Tasks</h1>
+        
+        <div class="input-group">
+            <input type="text" id="new-todo" placeholder="今夜のタスクを入力..." aria-label="新しいタスク">
+            <button class="add-btn" onclick="addTodo()">ADD TASK</button>
+        </div>
+
+        <div class="filters">
+            <button class="filter-btn active" onclick="setFilter('all')" id="filter-all">All</button>
+            <button class="filter-btn" onclick="setFilter('active')" id="filter-active">Active Only</button>
+        </div>
+
+        <ul id="todo-list">
+            <!-- Tasks will be injected here -->
+        </ul>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <script>
+        // --- State Management ---
+        let todos = [
+            { id: '1', text: 'シグネチャーカクテルの試作', completed: false },
+            { id: '2', text: '週末のジャズバンド手配', completed: true },
+            { id: '3', text: 'ワインセラーの在庫確認', completed: false },
+            { id: '4', text: 'VIPルームの照明調整', completed: false },
+            { id: '5', text: '新しいグラスの発注', completed: true }
+        ];
+
+        let currentFilter = 'all';
+        let editingId = null;
+
+        // --- DOM Elements ---
+        const todoListEl = document.getElementById('todo-list');
+        const inputEl = document.getElementById('new-todo');
+        const toastContainer = document.getElementById('toast-container');
+        const filterBtns = document.querySelectorAll('.filter-btn');
+
+        // --- Main Functions ---
+
+        function render() {
+            todoListEl.innerHTML = '';
+            
+            const filteredTodos = todos.filter(todo => {
+                if (currentFilter === 'active') return !todo.completed;
+                return true;
+            });
+
+            if (filteredTodos.length === 0) {
+                todoListEl.innerHTML = `<li style="text-align:center; color:var(--text-dim); padding:20px;">タスクはありません...</li>`;
+                return;
+            }
+
+            filteredTodos.forEach(todo => {
+                const li = document.createElement('li');
+                li.className = `todo-item ${todo.completed ? 'completed' : ''}`;
+                
+                // Checkbox
+                const checkboxHtml = `
+                    <div class="checkbox-wrapper" onclick="toggleComplete('${todo.id}')">
+                        <div class="custom-checkbox"></div>
+                    </div>
+                `;
+
+                // Content (Text or Edit Input)
+                let contentHtml = '';
+                if (editingId === todo.id) {
+                    contentHtml = `
+                        <input type="text" 
+                            class="edit-input" 
+                            id="edit-input-${todo.id}" 
+                            value="${todo.text}" 
+                            onblur="saveEdit('${todo.id}')"
+                            onkeydown="handleEditKeydown(event, '${todo.id}')"
+                        >
+                    `;
+                } else {
+                    contentHtml = `
+                        <div class="todo-content" onclick="startEdit('${todo.id}')">
+                            <span>${todo.text}</span>
+                        </div>
+                    `;
+                }
+
+                // Delete Button
+                const deleteHtml = `
+                    <button class="delete-btn" onclick="deleteTodo('${todo.id}')" aria-label="削除">
+                        ?
+                    </button>
+                `;
+
+                li.innerHTML = checkboxHtml + contentHtml + deleteHtml;
+                todoListEl.appendChild(li);
+
+                // Auto-focus input if editing
+                if (editingId === todo.id) {
+                    const editInput = document.getElementById(`edit-input-${todo.id}`);
+                    if(editInput) editInput.focus();
+                }
+            });
+
+            // Update filter button styles
+            filterBtns.forEach(btn => {
+                if (btn.id === `filter-${currentFilter}`) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        function addTodo() {
+            try {
+                const text = inputEl.value.trim();
+                if (!text) {
+                    showError('タスクの内容を入力してください。');
+                    return;
+                }
+
+                // Simulate random failure (10% chance) to demonstrate error handling
+                if (Math.random() < 0.1) {
+                    throw new Error('ネットワークエラー: 保存に失敗しました。');
+                }
+
+                const newTodo = {
+                    id: Date.now().toString(),
+                    text: text,
+                    completed: false
+                };
+
+                todos.unshift(newTodo); // Add to top
+                inputEl.value = '';
+                render();
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        function deleteTodo(id) {
+            if(!confirm('このタスクを削除してもよろしいですか？')) return;
+            
+            try {
+                 // Simulate error on delete?
+                todos = todos.filter(t => t.id !== id);
+                render();
+            } catch (e) {
+                showError('削除中にエラーが発生しました。');
+            }
+        }
+
+        function toggleComplete(id) {
+            const todo = todos.find(t => t.id === id);
+            if (todo) {
+                todo.completed = !todo.completed;
+                render();
+            }
+        }
+
+        // --- Editing Logic ---
+
+        function startEdit(id) {
+            const todo = todos.find(t => t.id === id);
+            if (todo && !todo.completed) {
+                editingId = id;
+                render();
+            }
+        }
+
+        function saveEdit(id) {
+            if (editingId !== id) return; // Prevent double save on blur + enter
+
+            const input = document.getElementById(`edit-input-${id}`);
+            if (input) {
+                const newText = input.value.trim();
+                if (newText) {
+                    try {
+                        const todo = todos.find(t => t.id === id);
+                        if(todo) todo.text = newText;
+                        editingId = null;
+                        render();
+                    } catch (e) {
+                        showError('更新に失敗しました。');
+                        editingId = null;
+                        render();
+                    }
+                } else {
+                    // Revert if empty
+                    editingId = null;
+                    render();
+                }
+            }
+        }
+
+        function handleEditKeydown(event, id) {
+            if (event.key === 'Enter') {
+                saveEdit(id);
+            } else if (event.key === 'Escape') {
+                editingId = null;
+                render();
+            }
+        }
+
+        // --- Filter Logic ---
+
+        function setFilter(filterType) {
+            currentFilter = filterType;
+            render();
+        }
+
+        // --- Error Handling (Toast) ---
+
+        function showError(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = `? ${message}`;
+            toastContainer.appendChild(toast);
+
+            // Remove automatically handled by CSS animation, but clean up DOM
+            setTimeout(() => {
+                toast.remove();
+            }, 3500);
+        }
+
+        // --- Initialization ---
+        
+        // Allow "Enter" key to add todo
+        inputEl.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addTodo();
+        });
+
+        // Initial Render
+        render();
+
+    </script>
+</body>
+</html>

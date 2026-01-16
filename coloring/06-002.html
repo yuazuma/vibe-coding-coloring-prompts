@@ -1,0 +1,484 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Luxury ToDo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* カスタムフォントとスタイル */
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Noto+Sans+JP:wght@300;400;500&display=swap');
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #0f0f0f; /* 深いマットブラック */
+            color: #e5e5e5;
+        }
+
+        h1, .brand-font {
+            font-family: 'Cinzel', serif;
+        }
+
+        /* 高級感のあるスクロールバー */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #666;
+        }
+
+        /* メタリックなグラデーションテキスト */
+        .text-metallic {
+            background: linear-gradient(to bottom, #ffffff, #a0a0a0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* シルバーボタンのスタイル */
+        .btn-silver {
+            background: linear-gradient(135deg, #e0e0e0 0%, #a0a0a0 50%, #808080 100%);
+            color: #1a1a1a;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        .btn-silver:hover {
+            background: linear-gradient(135deg, #ffffff 0%, #c0c0c0 50%, #a0a0a0 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 12px rgba(255, 255, 255, 0.1);
+        }
+        .btn-silver:active {
+            transform: translateY(0);
+        }
+
+        /* カードのスタイル */
+        .todo-card {
+            background: linear-gradient(145deg, #1a1a1a, #141414);
+            border: 1px solid #333;
+            box-shadow: 5px 5px 10px #0b0b0b, -5px -5px 10px #232323;
+            transition: all 0.3s ease;
+        }
+        .todo-card:hover {
+            border-color: #666;
+            transform: scale(1.01);
+        }
+
+        /* チェックボックスのカスタムスタイル */
+        .custom-checkbox {
+            appearance: none;
+            background-color: #222;
+            border: 1px solid #555;
+            width: 1.25rem;
+            height: 1.25rem;
+            border-radius: 0.25rem;
+            display: grid;
+            place-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .custom-checkbox::before {
+            content: "";
+            width: 0.75rem;
+            height: 0.75rem;
+            transform: scale(0);
+            transition: 120ms transform ease-in-out;
+            box-shadow: inset 1em 1em #d4af37; /* ゴールドのアクセント */
+            background-color: #d4af37;
+            transform-origin: center;
+            clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+        }
+        .custom-checkbox:checked::before {
+            transform: scale(1);
+        }
+        .custom-checkbox:checked {
+            border-color: #d4af37;
+        }
+
+        /* 入力フォームのアニメーション */
+        .input-underline {
+            position: relative;
+        }
+        .input-underline::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 0;
+            height: 1px;
+            background-color: #d4af37;
+            transition: width 0.3s ease;
+        }
+        .input-underline:focus-within::after {
+            width: 100%;
+        }
+
+        /* トースト通知のアニメーション */
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .toast-enter {
+            animation: slideIn 0.3s forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center py-10 px-4">
+
+    <!-- エラー表示用トーストコンテナ -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2"></div>
+
+    <!-- メインコンテナ -->
+    <main class="w-full max-w-2xl">
+        
+        <!-- ヘッダー -->
+        <header class="mb-10 text-center relative">
+            <h1 class="text-4xl md:text-5xl font-bold tracking-widest text-metallic mb-2 uppercase">Executive Tasks</h1>
+            <p class="text-gray-500 text-sm tracking-widest uppercase">Manage your priorities with elegance</p>
+            <div class="h-px w-24 bg-gradient-to-r from-transparent via-gray-500 to-transparent mx-auto mt-6"></div>
+        </header>
+
+        <!-- コントロールエリア -->
+        <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <!-- フィルター -->
+            <div class="flex items-center gap-4 bg-[#151515] px-4 py-2 rounded-full border border-[#333] shadow-inner">
+                <span class="text-gray-400 text-xs uppercase tracking-wider">Show:</span>
+                <label class="cursor-pointer flex items-center gap-2 group">
+                    <input type="radio" name="filter" value="all" checked class="hidden peer" onchange="renderTodos()">
+                    <span class="text-gray-500 peer-checked:text-gray-100 transition-colors text-sm font-medium">All</span>
+                </label>
+                <div class="w-px h-3 bg-gray-700"></div>
+                <label class="cursor-pointer flex items-center gap-2 group">
+                    <input type="radio" name="filter" value="active" class="hidden peer" onchange="renderTodos()">
+                    <span class="text-gray-500 peer-checked:text-[#d4af37] transition-colors text-sm font-medium">Active</span>
+                </label>
+            </div>
+
+            <!-- ステータス表示 -->
+            <div class="text-gray-500 text-xs tracking-widest">
+                <span id="task-count">0</span> TASKS REMAINING
+            </div>
+        </div>
+
+        <!-- 入力エリア -->
+        <div class="mb-8 relative group z-10">
+            <div class="absolute inset-0 bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg blur opacity-25 group-hover:opacity-40 transition duration-500"></div>
+            <div class="relative flex items-center bg-[#151515] rounded-lg border border-[#333] p-1 shadow-lg">
+                <input type="text" id="new-todo-input" 
+                    class="w-full bg-transparent border-none text-gray-200 placeholder-gray-600 px-4 py-3 focus:outline-none focus:ring-0 font-light tracking-wide"
+                    placeholder="Create a new vision..."
+                    onkeypress="handleKeyPress(event)">
+                <button onclick="addTodo()" 
+                    class="btn-silver rounded-md px-6 py-2 text-xs font-bold uppercase tracking-widest hover:shadow-lg">
+                    Add
+                </button>
+            </div>
+        </div>
+
+        <!-- ToDoリスト -->
+        <div id="todo-list" class="space-y-4">
+            <!-- JavaScriptでここにアイテムが挿入されます -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="hidden text-center py-12">
+            <i class="fas fa-check-circle text-4xl text-[#222] mb-4"></i>
+            <p class="text-gray-600 tracking-wider text-sm">NO TASKS FOUND</p>
+        </div>
+
+    </main>
+
+    <!-- 編集モーダル -->
+    <div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm hidden items-center justify-center z-50 opacity-0 transition-opacity duration-300">
+        <div class="bg-[#1a1a1a] border border-[#333] p-8 rounded-xl shadow-2xl w-full max-w-md transform scale-95 transition-transform duration-300" id="modal-content">
+            <h2 class="text-xl font-bold text-metallic mb-6 tracking-widest uppercase">Edit Task</h2>
+            
+            <div class="mb-6 input-underline">
+                <input type="text" id="edit-input" class="w-full bg-transparent border-b border-gray-700 text-gray-200 py-2 focus:outline-none focus:border-gray-500 transition-colors">
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button onclick="closeEditModal()" class="px-4 py-2 text-gray-400 hover:text-white text-xs uppercase tracking-wider transition-colors">Cancel</button>
+                <button onclick="saveEdit()" class="btn-silver px-6 py-2 rounded text-xs font-bold uppercase tracking-widest">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- フッター -->
+    <footer class="mt-16 text-center text-gray-700 text-xs tracking-widest">
+        &copy; 2026 LUXURY TODO APP. ALL RIGHTS RESERVED.
+    </footer>
+
+    <script>
+        // --- 状態管理 ---
+        let todos = [];
+        let editingId = null;
+
+        // --- 初期化 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTodos();
+            renderTodos();
+        });
+
+        // --- ダミーデータ ---
+        const DUMMY_DATA = [
+            { id: 1, title: "役員会議資料の最終確認", completed: false },
+            { id: 2, title: "クライアントとの会食予約 (銀座)", completed: false },
+            { id: 3, title: "プロジェクトXの進捗報告", completed: true },
+            { id: 4, title: "四半期決算書のレビュー", completed: false },
+            { id: 5, title: "週末のゴルフコンペ準備", completed: true }
+        ];
+
+        // --- CRUD操作 ---
+
+        // 読み込み (擬似的なAPIコールを含む)
+        function loadTodos() {
+            try {
+                const stored = localStorage.getItem('luxury_todos');
+                if (stored) {
+                    todos = JSON.parse(stored);
+                } else {
+                    // 初回のみダミーデータをロード
+                    todos = [...DUMMY_DATA];
+                    saveTodos();
+                }
+            } catch (e) {
+                showError("データの読み込みに失敗しました。システム管理者にお問い合わせください。");
+                todos = [];
+            }
+        }
+
+        // 保存
+        function saveTodos() {
+            try {
+                localStorage.setItem('luxury_todos', JSON.stringify(todos));
+                return true;
+            } catch (e) {
+                showError("保存に失敗しました。ストレージ容量をご確認ください。");
+                return false;
+            }
+        }
+
+        // 追加
+        function addTodo() {
+            const input = document.getElementById('new-todo-input');
+            const title = input.value.trim();
+
+            if (!title) {
+                showError("タスクの内容を入力してください。");
+                return;
+            }
+
+            const newTodo = {
+                id: Date.now(),
+                title: title,
+                completed: false
+            };
+
+            todos.unshift(newTodo); // 新しいものを上に
+            
+            if (saveTodos()) {
+                input.value = '';
+                renderTodos();
+            }
+        }
+
+        // 削除
+        function deleteTodo(id) {
+            if(!confirm("このタスクを完全に削除してもよろしいですか？")) return;
+            
+            todos = todos.filter(t => t.id !== id);
+            if (saveTodos()) {
+                renderTodos();
+            } else {
+                showError("削除処理中にエラーが発生しました。");
+            }
+        }
+
+        // 完了状態の切り替え
+        function toggleComplete(id) {
+            const todo = todos.find(t => t.id === id);
+            if (todo) {
+                todo.completed = !todo.completed;
+                saveTodos();
+                renderTodos();
+            }
+        }
+
+        // 編集モード開始（モーダルを開く）
+        function openEditModal(id) {
+            const todo = todos.find(t => t.id === id);
+            if (todo) {
+                editingId = id;
+                const modal = document.getElementById('edit-modal');
+                const content = document.getElementById('modal-content');
+                const input = document.getElementById('edit-input');
+                
+                input.value = todo.title;
+                
+                modal.classList.remove('hidden');
+                // アニメーション用
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    content.classList.remove('scale-95');
+                    content.classList.add('scale-100');
+                }, 10);
+                
+                input.focus();
+            }
+        }
+
+        // 編集モード終了（モーダルを閉じる）
+        function closeEditModal() {
+            const modal = document.getElementById('edit-modal');
+            const content = document.getElementById('modal-content');
+            
+            modal.classList.add('opacity-0');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                editingId = null;
+            }, 300);
+        }
+
+        // 編集保存
+        function saveEdit() {
+            const input = document.getElementById('edit-input');
+            const title = input.value.trim();
+            
+            if (!title) {
+                showError("タスクの内容は空にできません。");
+                return;
+            }
+
+            const todo = todos.find(t => t.id === editingId);
+            if (todo) {
+                todo.title = title;
+                if (saveTodos()) {
+                    closeEditModal();
+                    renderTodos();
+                }
+            }
+        }
+
+        // --- UIレンダリング ---
+
+        function renderTodos() {
+            const list = document.getElementById('todo-list');
+            const filterValue = document.querySelector('input[name="filter"]:checked').value;
+            const emptyState = document.getElementById('empty-state');
+            const countSpan = document.getElementById('task-count');
+
+            list.innerHTML = '';
+
+            // フィルタリング
+            let filteredTodos = todos;
+            if (filterValue === 'active') {
+                filteredTodos = todos.filter(t => !t.completed);
+            }
+
+            // 残タスク数更新（未完了のみカウント）
+            const activeCount = todos.filter(t => !t.completed).length;
+            countSpan.textContent = activeCount;
+
+            if (filteredTodos.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                
+                filteredTodos.forEach(todo => {
+                    const el = document.createElement('div');
+                    el.className = `todo-card p-4 rounded-lg flex items-center gap-4 group ${todo.completed ? 'opacity-50' : ''}`;
+                    el.innerHTML = `
+                        <label class="relative flex items-center cursor-pointer">
+                            <input type="checkbox" class="custom-checkbox" 
+                                ${todo.completed ? 'checked' : ''} 
+                                onchange="toggleComplete(${todo.id})">
+                        </label>
+                        
+                        <div class="flex-1 cursor-pointer" onclick="openEditModal(${todo.id})">
+                            <p class="text-sm md:text-base font-light tracking-wide ${todo.completed ? 'text-gray-500 line-through' : 'text-gray-200'}">
+                                ${escapeHtml(todo.title)}
+                            </p>
+                        </div>
+
+                        <div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
+                            <button onclick="openEditModal(${todo.id})" class="text-gray-500 hover:text-white mr-3 transition-colors" title="Edit">
+                                <i class="fas fa-pen text-xs"></i>
+                            </button>
+                            <button onclick="deleteTodo(${todo.id})" class="text-gray-600 hover:text-red-400 transition-colors" title="Delete">
+                                <i class="fas fa-trash text-xs"></i>
+                            </button>
+                        </div>
+                    `;
+                    list.appendChild(el);
+                });
+            }
+        }
+
+        // --- ユーティリティ ---
+
+        // Enterキーで追加
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                addTodo();
+            }
+        }
+        
+        // Enterキーで編集保存（モーダル内）
+        document.getElementById('edit-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                saveEdit();
+            }
+        });
+
+        // エラーメッセージ表示 (トースト)
+        function showError(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            // 高級感のあるエラー表示
+            toast.className = 'toast-enter bg-red-900/90 border border-red-700 text-white px-6 py-3 rounded shadow-lg flex items-center gap-3 backdrop-blur-sm';
+            toast.innerHTML = `
+                <i class="fas fa-exclamation-circle text-red-300"></i>
+                <span class="text-sm font-medium tracking-wide">${escapeHtml(message)}</span>
+            `;
+
+            container.appendChild(toast);
+
+            // 3秒後に消える
+            setTimeout(() => {
+                toast.style.transition = 'all 0.5s ease';
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    toast.remove();
+                }, 500);
+            }, 3000);
+        }
+
+        // XSS対策
+        function escapeHtml(str) {
+            if (typeof str !== 'string') return str;
+            return str.replace(/[&<>"']/g, function(match) {
+                const escape = {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                };
+                return escape[match];
+            });
+        }
+    </script>
+</body>
+</html>

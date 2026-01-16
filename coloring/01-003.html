@@ -1,0 +1,433 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シンプルToDoアプリ</title>
+    <!-- Tailwind CSS for Layout & Responsiveness -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts (Noto Sans JP) -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* カスタムカラー設定: 病院イメージの配色 */
+        :root {
+            --bg-color: #F0F8FF;       /* AliceBlue: 淡い水色 */
+            --card-bg: #FFFFFF;        /* White */
+            --accent-mint: #4DB6AC;    /* Mint Green: 落ち着いたミント */
+            --accent-hover: #26A69A;   /* 少し濃いミント */
+            --text-primary: #37474F;   /* Dark Blue Grey: 視認性の高い文字色 */
+            --text-secondary: #78909C; /* Blue Grey: 補足文字 */
+            --danger: #EF5350;         /* 優しい赤 */
+            --item-hover: #E0F2F1;     /* 非常に薄いミント */
+        }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+        }
+
+        .btn-primary {
+            background-color: var(--accent-mint);
+            color: white;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .todo-item {
+            transition: all 0.2s ease;
+            border-left: 4px solid transparent;
+        }
+        .todo-item:hover {
+            background-color: var(--item-hover);
+            border-left: 4px solid var(--accent-mint);
+        }
+
+        .completed-text {
+            color: var(--text-secondary);
+            text-decoration: line-through;
+        }
+
+        /* カスタムチェックボックス */
+        .custom-checkbox {
+            appearance: none;
+            background-color: #fff;
+            margin: 0;
+            font: inherit;
+            color: var(--accent-mint);
+            width: 1.25em;
+            height: 1.25em;
+            border: 2px solid var(--text-secondary);
+            border-radius: 0.15em;
+            display: grid;
+            place-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .custom-checkbox::before {
+            content: "";
+            width: 0.65em;
+            height: 0.65em;
+            transform: scale(0);
+            transition: 120ms transform ease-in-out;
+            box-shadow: inset 1em 1em var(--accent-mint);
+            transform-origin: center;
+            clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+        }
+
+        .custom-checkbox:checked {
+            border-color: var(--accent-mint);
+        }
+
+        .custom-checkbox:checked::before {
+            transform: scale(1);
+        }
+
+        /* ローディングアニメーション */
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--accent-mint);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center py-8 px-4">
+
+    <!-- メインコンテナ -->
+    <div class="w-full max-w-xl bg-white rounded-xl shadow-lg overflow-hidden">
+        
+        <!-- ヘッダー -->
+        <header class="bg-[#E0F7FA] p-6 text-center border-b border-gray-100">
+            <h1 class="text-2xl font-bold text-[#006064] tracking-wide">
+                <i class="fa-solid fa-notes-medical mr-2"></i>メディカル ToDo
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">安心・安全なタスク管理</p>
+        </header>
+
+        <!-- エラーメッセージ表示エリア -->
+        <div id="error-container" class="hidden bg-red-50 border-l-4 border-red-400 p-4 m-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-exclamation-circle text-red-400"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-red-700" id="error-message">エラーが発生しました。</p>
+                </div>
+                <div class="ml-auto pl-3">
+                    <div class="-mx-1.5 -my-1.5">
+                        <button onclick="hideError()" class="inline-flex rounded-md p-1.5 text-red-500 hover:bg-red-100 focus:outline-none">
+                            <span class="sr-only">Dismiss</span>
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 入力フォーム -->
+        <div class="p-6 pb-2">
+            <div class="flex flex-col sm:flex-row gap-3">
+                <input type="text" id="todo-input" 
+                    class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4DB6AC] focus:border-transparent transition" 
+                    placeholder="新しいタスクを入力してください..."
+                    onkeypress="handleEnter(event)">
+                <button onclick="addTodo()" 
+                    class="btn-primary px-6 py-3 rounded-lg font-medium shadow-sm flex items-center justify-center gap-2 whitespace-nowrap">
+                    <i class="fas fa-plus"></i> 追加
+                </button>
+            </div>
+        </div>
+
+        <!-- フィルターコントロール -->
+        <div class="px-6 py-2 flex items-center justify-between border-b border-gray-100 pb-4">
+            <span class="text-sm text-gray-500 font-medium" id="task-count">全 0 件</span>
+            <label class="inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="filter-checkbox" onchange="toggleFilter()" class="sr-only peer">
+                <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-teal-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#4DB6AC]"></div>
+                <span class="ms-3 text-sm font-medium text-gray-600">未完了のみ表示</span>
+            </label>
+        </div>
+
+        <!-- ローディング表示 -->
+        <div id="loading" class="hidden flex justify-center py-8">
+            <div class="spinner"></div>
+        </div>
+
+        <!-- ToDoリスト -->
+        <ul id="todo-list" class="divide-y divide-gray-100 max-h-[60vh] overflow-y-auto">
+            <!-- JavaScriptでここにアイテムが追加されます -->
+        </ul>
+
+        <!-- フッター -->
+        <div class="bg-gray-50 p-4 text-center text-xs text-gray-400">
+            &copy; 2026 Medical ToDo App
+        </div>
+    </div>
+
+    <!-- JavaScriptロジック -->
+    <script>
+        // --- 状態管理 ---
+        let todos = [];
+        let isFilterActive = false;
+        let isEditingId = null; // 現在編集中のID
+
+        // --- ダミーデータ ---
+        const dummyData = [
+            { id: 1, text: "朝の回診準備", completed: false },
+            { id: 2, text: "カルテの整理", completed: true },
+            { id: 3, text: "薬剤発注の確認", completed: false },
+            { id: 4, text: "患者様への説明資料作成", completed: false },
+            { id: 5, text: "スタッフミーティング", completed: true }
+        ];
+
+        // --- 初期化 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchTodos();
+        });
+
+        // Enterキーで追加
+        function handleEnter(e) {
+            if (e.key === 'Enter') {
+                addTodo();
+            }
+        }
+
+        // --- データ操作 (擬似非同期) ---
+
+        // データ取得
+        function fetchTodos() {
+            showLoading(true);
+            // 擬似的な通信遅延とエラー処理
+            setTimeout(() => {
+                try {
+                    // 通常はAPIから取得するが、ここではダミーデータをセット
+                    // ローカルストレージがあればそこから復元しても良い
+                    todos = [...dummyData]; 
+                    render();
+                    showLoading(false);
+                } catch (e) {
+                    showError("データの取得に失敗しました。再読み込みしてください。");
+                    showLoading(false);
+                }
+            }, 600);
+        }
+
+        // 新規追加
+        function addTodo() {
+            const input = document.getElementById('todo-input');
+            const text = input.value.trim();
+
+            if (!text) {
+                showError("タスクの内容を入力してください。");
+                return;
+            }
+
+            hideError();
+
+            const newTodo = {
+                id: Date.now(),
+                text: text,
+                completed: false
+            };
+
+            todos.unshift(newTodo); // リストの先頭に追加
+            input.value = '';
+            render();
+            // 成功メッセージ（オプション）
+            // alert('追加しました'); 
+        }
+
+        // 削除
+        function deleteTodo(id) {
+            if(!confirm("このタスクを削除してもよろしいですか？")) return;
+            
+            todos = todos.filter(todo => todo.id !== id);
+            render();
+        }
+
+        // 完了状態の切り替え
+        function toggleComplete(id) {
+            const todo = todos.find(t => t.id === id);
+            if (todo) {
+                todo.completed = !todo.completed;
+                render();
+            } else {
+                showError("更新対象が見つかりませんでした。");
+            }
+        }
+
+        // 編集モード開始
+        function startEditing(id) {
+            isEditingId = id;
+            render();
+            
+            // 入力フィールドにフォーカスを当てる
+            setTimeout(() => {
+                const input = document.getElementById(`edit-input-${id}`);
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            }, 50);
+        }
+
+        // 編集保存
+        function saveEdit(id) {
+            const input = document.getElementById(`edit-input-${id}`);
+            const newText = input.value.trim();
+
+            if (!newText) {
+                showError("タスクの内容は空にできません。");
+                return;
+            }
+
+            const todo = todos.find(t => t.id === id);
+            if (todo) {
+                todo.text = newText;
+                isEditingId = null;
+                hideError();
+                render();
+            } else {
+                showError("更新に失敗しました。");
+            }
+        }
+
+        // 編集キャンセル
+        function cancelEdit() {
+            isEditingId = null;
+            hideError();
+            render();
+        }
+
+        // フィルター切り替え
+        function toggleFilter() {
+            isFilterActive = document.getElementById('filter-checkbox').checked;
+            render();
+        }
+
+        // --- 表示ロジック ---
+
+        function render() {
+            const listContainer = document.getElementById('todo-list');
+            listContainer.innerHTML = '';
+
+            // フィルタリング処理
+            let displayTodos = todos;
+            if (isFilterActive) {
+                displayTodos = todos.filter(todo => !todo.completed);
+            }
+
+            // 件数更新
+            document.getElementById('task-count').textContent = `全 ${displayTodos.length} 件`;
+
+            if (displayTodos.length === 0) {
+                listContainer.innerHTML = `
+                    <li class="p-8 text-center text-gray-400">
+                        <i class="fas fa-clipboard-check text-4xl mb-3 text-gray-300"></i>
+                        <p>タスクはありません</p>
+                    </li>`;
+                return;
+            }
+
+            displayTodos.forEach(todo => {
+                const li = document.createElement('li');
+                li.className = "todo-item p-4 flex items-center justify-between group bg-white";
+                
+                // 編集モードかどうかで分岐
+                if (isEditingId === todo.id) {
+                    // --- 編集モード ---
+                    li.innerHTML = `
+                        <div class="flex-1 flex items-center gap-2">
+                            <input type="text" id="edit-input-${todo.id}" value="${escapeHtml(todo.text)}" 
+                                class="w-full p-2 border border-[#4DB6AC] rounded outline-none bg-blue-50"
+                                onkeydown="if(event.key === 'Enter') saveEdit(${todo.id})">
+                        </div>
+                        <div class="flex items-center gap-2 ml-4">
+                            <button onclick="saveEdit(${todo.id})" class="text-[#4DB6AC] hover:text-[#26A69A] p-2 rounded-full hover:bg-green-50" title="保存">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            <button onclick="cancelEdit()" class="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100" title="キャンセル">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    // --- 通常モード ---
+                    li.innerHTML = `
+                        <div class="flex items-center flex-1 gap-4 cursor-pointer" onclick="if(!event.target.closest('input')) startEditing(${todo.id})">
+                            <input type="checkbox" class="custom-checkbox flex-shrink-0" 
+                                ${todo.completed ? 'checked' : ''} 
+                                onchange="toggleComplete(${todo.id})"
+                                onclick="event.stopPropagation()">
+                            
+                            <span class="flex-1 text-lg ${todo.completed ? 'completed-text' : ''}">
+                                ${escapeHtml(todo.text)}
+                            </span>
+                        </div>
+                        
+                        <div class="ml-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 md:opacity-100">
+                            <button onclick="startEditing(${todo.id})" class="text-[#4DB6AC] hover:bg-[#E0F2F1] p-2 rounded-full transition" title="編集">
+                                <i class="fas fa-pen text-sm"></i>
+                            </button>
+                            <button onclick="deleteTodo(${todo.id})" class="text-red-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-full transition" title="削除">
+                                <i class="fas fa-trash-alt text-sm"></i>
+                            </button>
+                        </div>
+                    `;
+                }
+
+                listContainer.appendChild(li);
+            });
+        }
+
+        // --- ユーティリティ ---
+
+        function showLoading(isLoading) {
+            const loader = document.getElementById('loading');
+            const list = document.getElementById('todo-list');
+            if (isLoading) {
+                loader.classList.remove('hidden');
+                list.classList.add('hidden');
+            } else {
+                loader.classList.add('hidden');
+                list.classList.remove('hidden');
+            }
+        }
+
+        function showError(msg) {
+            const container = document.getElementById('error-container');
+            const messageEl = document.getElementById('error-message');
+            messageEl.textContent = msg;
+            container.classList.remove('hidden');
+            
+            // 5秒後に自動で消す
+            setTimeout(() => {
+                hideError();
+            }, 5000);
+        }
+
+        function hideError() {
+            document.getElementById('error-container').classList.add('hidden');
+        }
+
+        function escapeHtml(unsafe) {
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>

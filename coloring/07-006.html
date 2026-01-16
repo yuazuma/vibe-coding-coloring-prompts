@@ -1,0 +1,635 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Executive List | Premium Task Management</title>
+    <!-- Fonts: Cinzel for luxury headers, Lato for readability -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold-light: #F9E3A5;
+            --gold-base: #D4AF37;
+            --gold-dark: #AA8828;
+            --black-base: #121212;
+            --black-light: #1E1E1E;
+            --marble-noise: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIj48ZmlsdGVyIGlkPSJmIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iMC42IiAvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbHRlcj0idXJsKCNmKSIgb3BhY2l0eT0iMC4wNSIvPjwvc3ZnPg==');
+            --shadow-gold: 0 4px 15px rgba(212, 175, 55, 0.2);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background-color: var(--black-base);
+            background-image: var(--marble-noise), radial-gradient(circle at top right, #2c2c2c, #000000);
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 2rem 1rem;
+        }
+
+        /* Container */
+        .app-container {
+            width: 100%;
+            max-width: 600px;
+            background: rgba(18, 18, 18, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--gold-dark);
+            border-radius: 4px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), inset 0 0 2px var(--gold-base);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Decoration Lines */
+        .app-container::before, .app-container::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--gold-base), transparent);
+        }
+        .app-container::before { top: 0; }
+        .app-container::after { bottom: 0; }
+
+        /* Header */
+        header {
+            text-align: center;
+            padding: 2.5rem 1rem 1.5rem;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+        }
+
+        h1 {
+            font-family: 'Cinzel', serif;
+            font-size: 2.5rem;
+            color: transparent;
+            background: linear-gradient(to bottom, var(--gold-light), var(--gold-base));
+            -webkit-background-clip: text;
+            background-clip: text;
+            letter-spacing: 2px;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .subtitle {
+            color: var(--gold-dark);
+            font-size: 0.8rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        /* Controls Area */
+        .controls {
+            padding: 1.5rem 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .input-group {
+            display: flex;
+            position: relative;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--gold-dark);
+            color: white;
+            padding: 1rem 0.5rem;
+            font-size: 1.1rem;
+            font-family: 'Lato', sans-serif;
+            transition: var(--transition);
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-bottom-color: var(--gold-light);
+            background: linear-gradient(to top, rgba(212, 175, 55, 0.05), transparent);
+        }
+
+        input[type="text"]::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+            font-style: italic;
+        }
+
+        .btn-gold {
+            background: linear-gradient(135deg, var(--gold-dark), var(--gold-base));
+            color: var(--black-base);
+            border: none;
+            padding: 0 1.5rem;
+            font-family: 'Cinzel', serif;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .btn-gold:hover {
+            background: linear-gradient(135deg, var(--gold-base), var(--gold-light));
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .filter-container {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--gold-base);
+            font-size: 0.9rem;
+        }
+
+        /* Checkbox styling */
+        .custom-checkbox {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border: 1px solid var(--gold-base);
+            background: transparent;
+            cursor: pointer;
+            position: relative;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .custom-checkbox:checked {
+            background: var(--gold-base);
+            box-shadow: 0 0 5px var(--gold-base);
+        }
+
+        /* List Area */
+        .todo-list {
+            list-style: none;
+            padding: 0 2rem 2.5rem;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .todo-item {
+            display: flex;
+            align-items: center;
+            background: rgba(30, 30, 30, 0.4);
+            margin-bottom: 0.8rem;
+            padding: 1rem;
+            border-left: 3px solid transparent;
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .todo-item:hover {
+            background: rgba(40, 40, 40, 0.6);
+            border-left-color: var(--gold-base);
+        }
+
+        .todo-item.completed {
+            opacity: 0.5;
+            text-decoration: none; /* We handle line-through on text element */
+        }
+
+        .todo-item.completed .todo-text {
+            text-decoration: line-through;
+            color: #888;
+        }
+
+        .todo-check {
+            margin-right: 1rem;
+            width: 20px;
+            height: 20px;
+            border: 1px solid var(--gold-base);
+            border-radius: 50%; /* Circle for elegance */
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            flex-shrink: 0;
+        }
+
+        .todo-check::after {
+            content: '?';
+            color: var(--black-base);
+            font-size: 12px;
+            opacity: 0;
+            transform: scale(0);
+            transition: var(--transition);
+        }
+
+        .todo-item.completed .todo-check {
+            background: var(--gold-base);
+            box-shadow: 0 0 8px var(--gold-dark);
+        }
+
+        .todo-item.completed .todo-check::after {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .todo-text {
+            flex: 1;
+            cursor: pointer;
+            font-size: 1rem;
+            word-break: break-all;
+            position: relative;
+            padding: 0.2rem 0.5rem;
+            border: 1px solid transparent;
+        }
+
+        .todo-text:hover {
+            color: var(--gold-light);
+        }
+        
+        /* Edit Mode Input */
+        .edit-input {
+            flex: 1;
+            background: #000;
+            border: 1px solid var(--gold-base);
+            color: var(--gold-light);
+            padding: 0.3rem 0.5rem;
+            font-family: inherit;
+            font-size: 1rem;
+        }
+
+        .delete-btn {
+            background: transparent;
+            border: none;
+            color: #555;
+            cursor: pointer;
+            font-size: 1.2rem;
+            margin-left: 1rem;
+            transition: var(--transition);
+            padding: 0.2rem;
+        }
+
+        .delete-btn:hover {
+            color: #ff4d4d;
+            text-shadow: 0 0 5px rgba(255, 77, 77, 0.5);
+        }
+
+        /* Scrollbar */
+        .todo-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .todo-list::-webkit-scrollbar-track {
+            background: var(--black-base);
+        }
+        .todo-list::-webkit-scrollbar-thumb {
+            background: var(--gold-dark);
+            border-radius: 3px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            color: #666;
+            margin-top: 2rem;
+            font-style: italic;
+        }
+
+        /* Error Toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(50, 0, 0, 0.9);
+            color: #ffcccc;
+            border: 1px solid #ff4d4d;
+            padding: 1rem 2rem;
+            border-radius: 4px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: 'Lato', sans-serif;
+        }
+        
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Loading Overlay */
+        .loader-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(18, 18, 18, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .loader-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid transparent;
+            border-top-color: var(--gold-base);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            h1 { font-size: 1.8rem; }
+            .controls { padding: 1rem; }
+            .todo-list { padding: 0 1rem 2rem; }
+            .input-group { flex-direction: column; gap: 10px; }
+            .btn-gold { padding: 0.8rem; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- Loader for simulated async ops -->
+        <div id="loader" class="loader-overlay">
+            <div class="spinner"></div>
+        </div>
+
+        <header>
+            <h1>The Executive List</h1>
+            <div class="subtitle">Exclusive Task Management</div>
+        </header>
+
+        <section class="controls">
+            <form id="todo-form">
+                <div class="input-group">
+                    <input type="text" id="new-todo" placeholder="Next achievement..." autocomplete="off">
+                    <button type="submit" class="btn-gold">Acquire</button>
+                </div>
+            </form>
+            
+            <div class="filter-container">
+                <label for="filter-incomplete" style="cursor: pointer;">Hide Completed</label>
+                <input type="checkbox" id="filter-incomplete" class="custom-checkbox">
+            </div>
+        </section>
+
+        <ul id="todo-list" class="todo-list">
+            <!-- Items will be injected here -->
+        </ul>
+    </div>
+
+    <!-- Error Toast Notification -->
+    <div id="error-toast" class="toast">
+        <span style="font-size: 1.2rem;">??</span>
+        <span id="error-message">Error occurred.</span>
+    </div>
+
+    <script>
+        // --- State Management ---
+        const STATE = {
+            todos: [],
+            filterIncomplete: false
+        };
+
+        const STORAGE_KEY = 'executive_todo_list_v1';
+
+        // --- Dummy Data (VIP Theme) ---
+        const DUMMY_DATA = [
+            { id: 1, text: "Board meeting with stakeholders", completed: false },
+            { id: 2, text: "Review Q3 global assets portfolio", completed: true },
+            { id: 3, text: "Approve merger acquisition documents", completed: false },
+            { id: 4, text: "Private jet scheduling for Monaco", completed: false },
+            { id: 5, text: "Charity gala dinner RSVP", completed: true }
+        ];
+
+        // --- DOM Elements ---
+        const todoForm = document.getElementById('todo-form');
+        const todoInput = document.getElementById('new-todo');
+        const todoListEl = document.getElementById('todo-list');
+        const filterCheckbox = document.getElementById('filter-incomplete');
+        const errorToast = document.getElementById('error-toast');
+        const errorMsgEl = document.getElementById('error-message');
+        const loader = document.getElementById('loader');
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                showLoader(true);
+                // Simulate network delay for "Fetching Data"
+                await new Promise(r => setTimeout(r, 800));
+                
+                loadTodos();
+                render();
+            } catch (e) {
+                showError("Failed to retrieve confidential data.");
+            } finally {
+                showLoader(false);
+            }
+        });
+
+        // --- Core Functions ---
+
+        function loadTodos() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    STATE.todos = JSON.parse(stored);
+                } else {
+                    // Initialize with dummy data if empty
+                    STATE.todos = [...DUMMY_DATA];
+                    saveTodos(true); // Save dummy data silently
+                }
+            } catch (e) {
+                // If localStorage is corrupt or disabled
+                console.error(e);
+                throw new Error("Storage access denied");
+            }
+        }
+
+        function saveTodos(silent = false) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE.todos));
+            } catch (e) {
+                if (!silent) showError("Sync Failed: Unable to save updates to secure storage.");
+            }
+        }
+
+        function render() {
+            todoListEl.innerHTML = '';
+
+            const filteredTodos = STATE.filterIncomplete 
+                ? STATE.todos.filter(t => !t.completed) 
+                : STATE.todos;
+
+            if (filteredTodos.length === 0) {
+                todoListEl.innerHTML = '<li class="empty-state">No pending objectives found.</li>';
+                return;
+            }
+
+            filteredTodos.forEach(todo => {
+                const li = document.createElement('li');
+                li.className = `todo-item ${todo.completed ? 'completed' : ''}`;
+                li.dataset.id = todo.id;
+
+                li.innerHTML = `
+                    <div class="todo-check" onclick="toggleComplete(${todo.id})"></div>
+                    <span class="todo-text" onclick="enableEdit(this, ${todo.id})">${escapeHtml(todo.text)}</span>
+                    <button class="delete-btn" onclick="deleteTodo(${todo.id})" title="Remove Asset">?</button>
+                `;
+                todoListEl.appendChild(li);
+            });
+        }
+
+        // --- Actions ---
+
+        async function addTodo(text) {
+            if (!text.trim()) return;
+
+            try {
+                // Simulate async creation
+                const newTodo = {
+                    id: Date.now(),
+                    text: text.trim(),
+                    completed: false
+                };
+                STATE.todos.unshift(newTodo); // Add to top
+                saveTodos();
+                render();
+                todoInput.value = '';
+            } catch (e) {
+                showError("Transaction Failed: Could not create new objective.");
+            }
+        }
+
+        function toggleComplete(id) {
+            try {
+                const todo = STATE.todos.find(t => t.id === id);
+                if (todo) {
+                    todo.completed = !todo.completed;
+                    saveTodos();
+                    render();
+                }
+            } catch (e) {
+                showError("Update Failed: Status change not recorded.");
+            }
+        }
+
+        function deleteTodo(id) {
+            try {
+                if(confirm("Are you sure you want to terminate this objective?")) {
+                    STATE.todos = STATE.todos.filter(t => t.id !== id);
+                    saveTodos();
+                    render();
+                }
+            } catch (e) {
+                showError("Deletion Failed: Objective remains active.");
+            }
+        }
+
+        function enableEdit(element, id) {
+            if (element.querySelector('input')) return; // Already editing
+
+            const currentText = element.innerText;
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = currentText;
+            input.className = 'edit-input';
+            
+            // Replace span with input
+            element.innerHTML = '';
+            element.appendChild(input);
+            input.focus();
+
+            // Save on Blur or Enter
+            const saveEdit = () => {
+                const newText = input.value.trim();
+                if (newText) {
+                    updateTodoText(id, newText);
+                } else {
+                    // Revert if empty
+                    element.innerHTML = escapeHtml(currentText);
+                }
+            };
+
+            input.addEventListener('blur', saveEdit);
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    input.blur(); // Triggers blur event
+                }
+            });
+        }
+
+        function updateTodoText(id, newText) {
+            try {
+                const todo = STATE.todos.find(t => t.id === id);
+                if (todo && todo.text !== newText) {
+                    todo.text = newText;
+                    saveTodos();
+                }
+                render();
+            } catch (e) {
+                showError("Edit Failed: Content update rejected.");
+                render(); // Revert UI
+            }
+        }
+
+        // --- Event Listeners ---
+
+        todoForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            addTodo(todoInput.value);
+        });
+
+        filterCheckbox.addEventListener('change', (e) => {
+            STATE.filterIncomplete = e.target.checked;
+            render();
+        });
+
+        // --- Utilities ---
+
+        function showError(msg) {
+            errorMsgEl.innerText = msg;
+            errorToast.classList.add('show');
+            setTimeout(() => {
+                errorToast.classList.remove('show');
+            }, 4000);
+        }
+
+        function showLoader(show) {
+            if (show) loader.classList.add('active');
+            else loader.classList.remove('active');
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+        
+        // Expose functions to global scope for onclick handlers
+        window.toggleComplete = toggleComplete;
+        window.deleteTodo = deleteTodo;
+        window.enableEdit = enableEdit;
+
+    </script>
+</body>
+</html>

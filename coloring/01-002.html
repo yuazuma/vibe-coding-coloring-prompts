@@ -1,0 +1,419 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple ToDo App</title>
+    <!-- Tailwind CSS (Utility classes) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter for that clean tech look -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        dark: {
+                            bg: '#0f172a',      // Slate 900
+                            card: '#1e293b',    // Slate 800
+                            text: '#f1f5f9',    // Slate 100
+                            muted: '#94a3b8'    // Slate 400
+                        },
+                        electric: {
+                            blue: '#06b6d4',    // Cyan 500
+                            glow: '#22d3ee',    // Cyan 400
+                            hover: '#0891b2'    // Cyan 600
+                        }
+                    },
+                    boxShadow: {
+                        'neon': '0 0 10px rgba(34, 211, 238, 0.3), 0 0 20px rgba(34, 211, 238, 0.1)',
+                        'neon-hover': '0 0 15px rgba(34, 211, 238, 0.5), 0 0 30px rgba(34, 211, 238, 0.2)'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f1f5f9;
+            /* Subtle grid background for tech vibe */
+            background-image: linear-gradient(rgba(30, 41, 59, 0.5) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(30, 41, 59, 0.5) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        
+        .custom-checkbox {
+            appearance: none;
+            background-color: transparent;
+            margin: 0;
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid #94a3b8;
+            border-radius: 4px;
+            display: grid;
+            place-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .custom-checkbox::before {
+            content: "";
+            width: 0.75rem;
+            height: 0.75rem;
+            transform: scale(0);
+            transition: 120ms transform ease-in-out;
+            box-shadow: inset 1em 1em #06b6d4; /* Electric Blue Check */
+            transform-origin: center;
+            clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+        }
+
+        .custom-checkbox:checked {
+            border-color: #06b6d4;
+            box-shadow: 0 0 8px rgba(6, 182, 212, 0.4);
+        }
+
+        .custom-checkbox:checked::before {
+            transform: scale(1);
+        }
+
+        /* Fade in animation for list items */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b; 
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- Error Notification Toast -->
+    <div id="error-toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 bg-red-500/90 text-white px-6 py-3 rounded-lg shadow-lg hidden transition-opacity duration-300 z-50 backdrop-blur-sm border border-red-400">
+        <span id="error-message">Error occurred</span>
+    </div>
+
+    <!-- Main Container -->
+    <div class="w-full max-w-2xl bg-dark-card/90 backdrop-blur-md border border-slate-700 rounded-2xl shadow-2xl overflow-hidden relative">
+        
+        <!-- Header Section -->
+        <div class="p-8 border-b border-slate-700 bg-gradient-to-r from-dark-card to-slate-900">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-3xl font-bold tracking-tight text-white flex items-center gap-3">
+                    <i data-lucide="zap" class="text-electric-blue w-8 h-8"></i>
+                    NEXT<span class="text-electric-blue">DO</span>
+                </h1>
+                <div class="text-xs text-electric-blue font-mono border border-electric-blue/30 px-2 py-1 rounded bg-electric-blue/5">
+                    v1.0.0 STABLE
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="relative group">
+                <input type="text" id="todo-input" 
+                    class="w-full bg-slate-900/50 border border-slate-600 text-white placeholder-slate-500 rounded-xl py-4 pl-4 pr-14 focus:outline-none focus:border-electric-blue focus:ring-1 focus:ring-electric-blue transition-all duration-300 font-light"
+                    placeholder="What needs to be done?">
+                <button id="add-btn" 
+                    class="absolute right-2 top-2 bottom-2 bg-electric-blue hover:bg-electric-hover text-white px-4 rounded-lg transition-colors duration-200 shadow-neon hover:shadow-neon-hover flex items-center justify-center">
+                    <i data-lucide="plus" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Filter Controls -->
+        <div class="flex items-center justify-between px-8 py-4 bg-slate-800/50 border-b border-slate-700 text-sm">
+            <div class="text-dark-muted font-mono">
+                <span id="items-count">0</span> tasks left
+            </div>
+            <div class="flex gap-2">
+                <button id="filter-all" class="filter-btn px-3 py-1 rounded transition-colors text-white bg-slate-700 font-medium">All</button>
+                <button id="filter-active" class="filter-btn px-3 py-1 rounded transition-colors text-dark-muted hover:text-white hover:bg-slate-700">Active</button>
+            </div>
+        </div>
+
+        <!-- List Area -->
+        <div class="bg-dark-bg/30 min-h-[400px] max-h-[60vh] overflow-y-auto relative">
+            <ul id="todo-list" class="p-4 space-y-2">
+                <!-- Tasks will be injected here -->
+            </ul>
+            
+            <!-- Empty State -->
+            <div id="empty-state" class="hidden absolute inset-0 flex flex-col items-center justify-center text-dark-muted opacity-50">
+                <i data-lucide="check-circle" class="w-16 h-16 mb-4 text-slate-600"></i>
+                <p>All tasks completed</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Configuration & State ---
+        const STORAGE_KEY = 'next_do_app_data';
+        
+        // Initial Dummy Data
+        const dummyData = [
+            { id: '1', text: 'Q4 Product Roadmap Review', completed: false },
+            { id: '2', text: 'Optimize Database Queries', completed: true },
+            { id: '3', text: 'Design System Update (Figma)', completed: false },
+            { id: '4', text: 'Deploy to Staging Environment', completed: false },
+            { id: '5', text: 'Weekly Team Sync', completed: true }
+        ];
+
+        let state = {
+            todos: [],
+            filter: 'all' // 'all' or 'active'
+        };
+
+        // --- DOM Elements ---
+        const todoInput = document.getElementById('todo-input');
+        const addBtn = document.getElementById('add-btn');
+        const todoList = document.getElementById('todo-list');
+        const itemsCount = document.getElementById('items-count');
+        const filterAllBtn = document.getElementById('filter-all');
+        const filterActiveBtn = document.getElementById('filter-active');
+        const errorToast = document.getElementById('error-toast');
+        const errorMessage = document.getElementById('error-message');
+        const emptyState = document.getElementById('empty-state');
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTodos();
+            lucide.createIcons();
+            setupEventListeners();
+        });
+
+        // --- Core Functions ---
+
+        function loadTodos() {
+            try {
+                const storedData = localStorage.getItem(STORAGE_KEY);
+                if (storedData) {
+                    state.todos = JSON.parse(storedData);
+                } else {
+                    // Load dummy data for first time
+                    state.todos = [...dummyData];
+                    saveTodos(); // Save initial state
+                }
+                render();
+            } catch (error) {
+                showError('Failed to load data. Local storage might be disabled.');
+                console.error(error);
+                // Fallback to dummy data in memory if storage fails
+                state.todos = [...dummyData];
+                render();
+            }
+        }
+
+        function saveTodos() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state.todos));
+            } catch (error) {
+                showError('Failed to save changes. Storage quota might be exceeded.');
+                console.error(error);
+            }
+        }
+
+        function showError(msg) {
+            errorMessage.textContent = msg;
+            errorToast.classList.remove('hidden');
+            errorToast.classList.add('animate-fade-in');
+            
+            // Hide after 3 seconds
+            setTimeout(() => {
+                errorToast.classList.add('opacity-0');
+                setTimeout(() => {
+                    errorToast.classList.add('hidden');
+                    errorToast.classList.remove('opacity-0');
+                }, 300);
+            }, 3000);
+        }
+
+        function render() {
+            todoList.innerHTML = '';
+            
+            // Filtering logic
+            const filteredTodos = state.todos.filter(todo => {
+                if (state.filter === 'active') return !todo.completed;
+                return true;
+            });
+
+            // Empty state handling
+            if (filteredTodos.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            // Update count (Active tasks)
+            const activeCount = state.todos.filter(t => !t.completed).length;
+            itemsCount.textContent = activeCount;
+
+            // Render items
+            filteredTodos.forEach(todo => {
+                const li = document.createElement('li');
+                li.className = `group flex items-center justify-between p-4 bg-slate-800/40 hover:bg-slate-800 border border-slate-700/50 rounded-xl transition-all duration-200 animate-fade-in mb-2 ${todo.completed ? 'opacity-60' : ''}`;
+                li.dataset.id = todo.id;
+
+                // Checkbox
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'custom-checkbox flex-shrink-0';
+                checkbox.checked = todo.completed;
+                checkbox.onchange = () => toggleTodo(todo.id);
+
+                // Text Container
+                const textSpan = document.createElement('span');
+                textSpan.className = `flex-grow mx-4 text-sm md:text-base font-light cursor-text truncate ${todo.completed ? 'line-through text-slate-500' : 'text-slate-200'}`;
+                textSpan.textContent = todo.text;
+                textSpan.title = "Click to edit";
+                textSpan.onclick = () => enableEditMode(todo.id, textSpan);
+
+                // Delete Button
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 p-2 rounded-lg';
+                deleteBtn.innerHTML = '<i data-lucide="trash-2" class="w-4 h-4"></i>';
+                deleteBtn.onclick = () => deleteTodo(todo.id);
+
+                // Assemble
+                li.appendChild(checkbox);
+                li.appendChild(textSpan);
+                li.appendChild(deleteBtn);
+                todoList.appendChild(li);
+            });
+
+            // Re-initialize icons for new elements
+            lucide.createIcons();
+            updateFilterButtons();
+        }
+
+        // --- Actions ---
+
+        function addTodo() {
+            const text = todoInput.value.trim();
+            if (!text) {
+                showError('Please enter a task description.');
+                return;
+            }
+
+            const newTodo = {
+                id: Date.now().toString(),
+                text: text,
+                completed: false
+            };
+
+            state.todos.unshift(newTodo); // Add to top
+            saveTodos();
+            render();
+            todoInput.value = '';
+            todoInput.focus();
+        }
+
+        function toggleTodo(id) {
+            const todo = state.todos.find(t => t.id === id);
+            if (todo) {
+                todo.completed = !todo.completed;
+                saveTodos();
+                render();
+            } else {
+                showError('Item not found.');
+            }
+        }
+
+        function deleteTodo(id) {
+            state.todos = state.todos.filter(t => t.id !== id);
+            saveTodos();
+            render();
+        }
+
+        function setFilter(filterType) {
+            state.filter = filterType;
+            render();
+        }
+
+        function updateFilterButtons() {
+            if (state.filter === 'all') {
+                filterAllBtn.className = 'filter-btn px-3 py-1 rounded transition-colors text-white bg-slate-700 font-medium shadow-sm';
+                filterActiveBtn.className = 'filter-btn px-3 py-1 rounded transition-colors text-dark-muted hover:text-white hover:bg-slate-700';
+            } else {
+                filterAllBtn.className = 'filter-btn px-3 py-1 rounded transition-colors text-dark-muted hover:text-white hover:bg-slate-700';
+                filterActiveBtn.className = 'filter-btn px-3 py-1 rounded transition-colors text-white bg-slate-700 font-medium shadow-sm';
+            }
+        }
+
+        // --- Edit Mode Logic ---
+
+        function enableEditMode(id, textElement) {
+            const todo = state.todos.find(t => t.id === id);
+            if (!todo || todo.completed) return; // Don't edit completed tasks easily (UX choice)
+
+            // Create input replacement
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = todo.text;
+            input.className = 'flex-grow mx-4 text-sm md:text-base bg-slate-900 text-electric-blue border-b border-electric-blue focus:outline-none py-0.5';
+            
+            // Replace span with input
+            textElement.replaceWith(input);
+            input.focus();
+
+            // Save handlers
+            const save = () => {
+                const newText = input.value.trim();
+                if (newText) {
+                    todo.text = newText;
+                    saveTodos();
+                } else {
+                    // If empty, delete or revert? Let's revert to original if empty
+                    showError('Task cannot be empty. Reverting changes.');
+                }
+                render();
+            };
+
+            // Event listeners for save
+            input.addEventListener('blur', save);
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    input.blur(); // Triggers save via blur
+                } else if (e.key === 'Escape') {
+                    render(); // Revert without saving
+                }
+            });
+        }
+
+        // --- Event Listeners Setup ---
+
+        function setupEventListeners() {
+            addBtn.addEventListener('click', addTodo);
+            
+            todoInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') addTodo();
+            });
+
+            filterAllBtn.addEventListener('click', () => setFilter('all'));
+            filterActiveBtn.addEventListener('click', () => setFilter('active'));
+        }
+
+    </script>
+</body>
+</html>

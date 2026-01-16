@@ -1,0 +1,478 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>和風 ToDo - 日々の務め</title>
+    <!-- Tailwind CSS (スタイリングの基盤) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts (和風フォント) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome (アイコン) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* 配色パレット: 日本の伝統色 */
+        :root {
+            /* 藍色 (Indigo) - メインカラー/完了アクション */
+            --color-ai: #165e83;
+            --color-ai-dark: #0f4c6a;
+            /* 抹茶色 (Matcha) - アクセント/背景アクセント */
+            --color-matcha: #708c69;
+            --color-matcha-light: #e8f0e4;
+            /* 生成り色 (Kinari) - 全体背景 */
+            --color-kinari: #fbfbf6;
+            /* 墨色 (Sumi) - 文字色 */
+            --color-sumi: #333333;
+            /* 紅色 (Beni) - 削除/エラー */
+            --color-beni: #b7282e;
+        }
+
+        body {
+            background-color: var(--color-kinari);
+            color: var(--color-sumi);
+            font-family: 'Zen Maru Gothic', sans-serif; /* 親しみやすい丸ゴシック */
+            background-image: radial-gradient(#dcdcd6 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        h1, h2, .serif {
+            font-family: 'Noto Serif JP', serif; /* タイトルは明朝体で凛とさせる */
+        }
+
+        /* カスタムスクロールバー */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 4px;
+        }
+
+        /* 和風ボタンのスタイル */
+        .btn-ai {
+            background-color: var(--color-ai);
+            color: white;
+            transition: all 0.3s ease;
+        }
+        .btn-ai:hover {
+            background-color: var(--color-ai-dark);
+        }
+
+        .btn-matcha {
+            background-color: var(--color-matcha);
+            color: white;
+            transition: all 0.3s ease;
+        }
+        .btn-matcha:hover {
+            opacity: 0.9;
+        }
+
+        /* フィルタタブのアクティブ状態 */
+        .tab-active {
+            border-bottom: 3px solid var(--color-ai);
+            color: var(--color-ai);
+            font-weight: bold;
+        }
+        .tab-inactive {
+            border-bottom: 3px solid transparent;
+            color: #888;
+        }
+        .tab-inactive:hover {
+            color: var(--color-matcha);
+        }
+
+        /* タスクアイテムのアニメーション */
+        .task-item {
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+        .task-item:hover {
+            background-color: #fff;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border-left: 4px solid var(--color-matcha);
+        }
+        .task-done {
+            opacity: 0.6;
+            text-decoration: line-through;
+            color: #888;
+        }
+        .task-done .task-text {
+            text-decoration-color: var(--color-ai);
+        }
+
+        /* エラーメッセージのフェードイン */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 紙のような質感のカード */
+        .washi-card {
+            background-color: #ffffff;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border: 1px solid #f0f0f0;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center py-8 px-4">
+
+    <!-- エラーメッセージ表示エリア (トースト) -->
+    <div id="error-container" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4 pointer-events-none">
+        <!-- JSで動的に追加されます -->
+    </div>
+
+    <!-- メインコンテンツ -->
+    <main class="w-full max-w-2xl washi-card rounded-lg overflow-hidden relative">
+        
+        <!-- ヘッダー -->
+        <header class="bg-[var(--color-ai)] text-white p-6 text-center relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none" style="background-image: url('data:image/svg+xml,%3Csvg width=\'20\' height=\'20\' viewBox=\'0 0 20 20\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M1 1h2v2H1V1zm4 0h2v2H5V1zm4 0h2v2H9V1zm4 0h2v2h-2V1zm4 0h2v2h-2V1zM1 5h2v2H1V5zm4 0h2v2H5V5zm4 0h2v2H9V5zm4 0h2v2h-2V5zm4 0h2v2h-2V5zM1 9h2v2H1V9zm4 0h2v2H5V9zm4 0h2v2H9V9zm4 0h2v2h-2V9zm4 0h2v2h-2V9zM1 13h2v2H1v-2zm4 0h2v2H5v-2zm4 0h2v2H9v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2zM1 17h2v2H1v-2zm4 0h2v2H5v-2zm4 0h2v2H9v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2z\' fill=\'%23ffffff\' fill-opacity=\'1\' fill-rule=\'evenodd\'/%3E%3C/svg%3E');"></div>
+            <h1 class="text-3xl font-bold tracking-widest mb-1">日々の務め</h1>
+            <p class="text-xs opacity-80 font-light tracking-wide">SIMPLE TODO LIST</p>
+        </header>
+
+        <!-- 入力エリア -->
+        <div class="p-6 border-b border-gray-100 bg-white">
+            <div class="flex gap-2">
+                <input type="text" id="new-task-input" 
+                    placeholder="新しい務めを入力..." 
+                    class="flex-1 p-3 border border-gray-300 rounded focus:outline-none focus:border-[var(--color-matcha)] focus:ring-1 focus:ring-[var(--color-matcha)] transition-colors placeholder-gray-400 text-gray-700"
+                    onkeypress="handleKeyPress(event)">
+                <button onclick="addTask()" 
+                    class="btn-ai px-6 py-3 rounded font-bold shadow-md flex items-center gap-2 whitespace-nowrap">
+                    <i class="fas fa-plus"></i> <span class="hidden sm:inline">追加</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- フィルタ切り替え -->
+        <div class="flex border-b border-gray-100 bg-[var(--color-kinari)]">
+            <button onclick="setFilter('all')" id="tab-all" class="flex-1 py-3 text-center tab-active transition-colors font-medium">
+                すべて
+            </button>
+            <button onclick="setFilter('incomplete')" id="tab-incomplete" class="flex-1 py-3 text-center tab-inactive transition-colors font-medium">
+                未完了のみ
+            </button>
+        </div>
+
+        <!-- ToDoリスト -->
+        <div class="bg-[var(--color-kinari)] min-h-[300px]">
+            <ul id="todo-list" class="divide-y divide-gray-200/60">
+                <!-- JSでリストがここに描画されます -->
+            </ul>
+            
+            <!-- 空の状態の表示 -->
+            <div id="empty-state" class="hidden flex-col items-center justify-center py-12 text-gray-400">
+                <i class="fas fa-coffee text-4xl mb-3 text-[var(--color-matcha)] opacity-50"></i>
+                <p class="serif">務めはありません。茶でも飲みましょう。</p>
+            </div>
+        </div>
+
+        <!-- フッター -->
+        <footer class="p-3 bg-gray-50 text-center text-xs text-gray-400 border-t border-gray-100">
+            <p>&copy; 2024 Wa-Modern ToDo App</p>
+        </footer>
+    </main>
+
+    <!-- JavaScript ロジック -->
+    <script>
+        // --- データ定義 ---
+        const STORAGE_KEY = 'wa_todo_app_data';
+        
+        // ダミーデータ（初回起動時用）
+        const dummyData = [
+            { id: 1, text: "朝の散歩をする", completed: true, createdAt: Date.now() - 100000 },
+            { id: 2, text: "プロジェクトの資料作成", completed: false, createdAt: Date.now() - 80000 },
+            { id: 3, text: "抹茶を買う", completed: false, createdAt: Date.now() - 60000 },
+            { id: 4, text: "週次定例ミーティング", completed: false, createdAt: Date.now() - 40000 },
+            { id: 5, text: "読書（30分）", completed: false, createdAt: Date.now() - 20000 },
+        ];
+
+        // --- 状態管理 ---
+        let tasks = [];
+        let currentFilter = 'all'; // 'all' or 'incomplete'
+        let editingId = null; // 現在編集中のID
+
+        // --- 初期化処理 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTasks();
+        });
+
+        // --- コア機能 ---
+
+        // タスクの読み込み (エラーハンドリング付き)
+        function loadTasks() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    tasks = JSON.parse(stored);
+                } else {
+                    // 初回のみダミーデータをロード
+                    tasks = [...dummyData];
+                    saveTasksToStorage();
+                }
+                renderTasks();
+            } catch (error) {
+                console.error("Load failed:", error);
+                showError("データの取得に失敗しました。ページを再読み込みしてください。");
+            }
+        }
+
+        // タスクの保存 (エラーハンドリング付き)
+        function saveTasksToStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+                return true;
+            } catch (error) {
+                console.error("Save failed:", error);
+                showError("データの保存に失敗しました。ストレージ容量を確認してください。");
+                return false;
+            }
+        }
+
+        // タスクの追加
+        function addTask() {
+            const input = document.getElementById('new-task-input');
+            const text = input.value.trim();
+
+            if (!text) return;
+
+            const newTask = {
+                id: Date.now(),
+                text: text,
+                completed: false,
+                createdAt: Date.now()
+            };
+
+            tasks.unshift(newTask); // 先頭に追加
+
+            if (saveTasksToStorage()) {
+                input.value = '';
+                // フィルタが未完了以外の場合でも追加が見えるようにリセットするか、
+                // もしくはそのまま追加するか。今回はそのままrender
+                renderTasks();
+            }
+        }
+
+        // Enterキーで追加
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                addTask();
+            }
+        }
+
+        // 完了状態の切り替え
+        function toggleComplete(id) {
+            const task = tasks.find(t => t.id === id);
+            if (task) {
+                task.completed = !task.completed;
+                if (saveTasksToStorage()) {
+                    renderTasks();
+                }
+            }
+        }
+
+        // タスクの削除
+        function deleteTask(id) {
+            if (!confirm('この務めを削除してよろしいですか？')) return;
+
+            tasks = tasks.filter(t => t.id !== id);
+            if (saveTasksToStorage()) {
+                renderTasks();
+            }
+        }
+
+        // 編集モード開始
+        function startEdit(id) {
+            editingId = id;
+            renderTasks();
+            
+            // 入力フィールドにフォーカスを当てる
+            setTimeout(() => {
+                const input = document.getElementById(`edit-input-${id}`);
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            }, 50);
+        }
+
+        // 編集内容の保存
+        function saveEdit(id) {
+            const input = document.getElementById(`edit-input-${id}`);
+            const newText = input.value.trim();
+
+            if (!newText) {
+                showError("務めの内容は空にできません。");
+                return;
+            }
+
+            const task = tasks.find(t => t.id === id);
+            if (task) {
+                task.text = newText;
+                editingId = null;
+                if (saveTasksToStorage()) {
+                    renderTasks();
+                }
+            }
+        }
+
+        // 編集のキャンセル
+        function cancelEdit() {
+            editingId = null;
+            renderTasks();
+        }
+
+        // 編集入力でのキーハンドリング
+        function handleEditKeyPress(event, id) {
+            if (event.key === 'Enter') {
+                saveEdit(id);
+            } else if (event.key === 'Escape') {
+                cancelEdit();
+            }
+        }
+
+        // フィルタリング設定
+        function setFilter(filterType) {
+            currentFilter = filterType;
+            
+            // タブの見た目更新
+            const tabAll = document.getElementById('tab-all');
+            const tabInc = document.getElementById('tab-incomplete');
+            
+            if (filterType === 'all') {
+                tabAll.className = tabAll.className.replace('tab-inactive', 'tab-active');
+                tabInc.className = tabInc.className.replace('tab-active', 'tab-inactive');
+            } else {
+                tabAll.className = tabAll.className.replace('tab-active', 'tab-inactive');
+                tabInc.className = tabInc.className.replace('tab-inactive', 'tab-active');
+            }
+
+            renderTasks();
+        }
+
+        // --- 描画処理 ---
+        function renderTasks() {
+            const listElement = document.getElementById('todo-list');
+            const emptyState = document.getElementById('empty-state');
+            
+            listElement.innerHTML = '';
+
+            // フィルタリングロジック
+            const filteredTasks = tasks.filter(task => {
+                if (currentFilter === 'incomplete') return !task.completed;
+                return true;
+            });
+
+            // 空の状態判定
+            if (filteredTasks.length === 0) {
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+            } else {
+                emptyState.classList.add('hidden');
+                emptyState.classList.remove('flex');
+            }
+
+            // リスト生成
+            filteredTasks.forEach(task => {
+                const li = document.createElement('li');
+                li.className = `task-item p-4 flex items-center justify-between group ${task.completed ? 'task-done bg-gray-50' : 'bg-white'}`;
+                
+                // 編集モードかどうかで分岐
+                if (editingId === task.id) {
+                    // --- 編集モード ---
+                    li.innerHTML = `
+                        <div class="flex-1 flex items-center gap-2">
+                            <input type="text" id="edit-input-${task.id}" 
+                                value="${escapeHtml(task.text)}" 
+                                class="w-full p-2 border border-[var(--color-matcha)] rounded outline-none shadow-inner bg-white text-gray-800"
+                                onkeydown="handleEditKeyPress(event, ${task.id})"
+                                onblur="cancelEdit()" 
+                            > <!-- onblurでキャンセルするか保存するかはUXによるが、誤操作防止のため今回は保存ボタン押下かEnterを必須とするためblurでの保存はしない -->
+                        </div>
+                        <div class="flex items-center gap-2 ml-2">
+                             <button onclick="saveEdit(${task.id})" class="text-[var(--color-matcha)] hover:text-green-700 p-2" title="保存">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            <button onclick="cancelEdit()" class="text-gray-400 hover:text-gray-600 p-2" title="キャンセル">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    // --- 通常モード ---
+                    li.innerHTML = `
+                        <div class="flex-1 flex items-center gap-3 cursor-pointer" onclick="startEdit(${task.id})">
+                            <button onclick="event.stopPropagation(); toggleComplete(${task.id})" 
+                                class="flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${task.completed ? 'border-[var(--color-ai)] bg-[var(--color-ai)] text-white' : 'border-gray-300 text-transparent hover:border-[var(--color-matcha)]'}">
+                                <i class="fas fa-check text-xs"></i>
+                            </button>
+                            <span class="task-text text-lg break-all" title="クリックして編集">${escapeHtml(task.text)}</span>
+                        </div>
+                        <button onclick="deleteTask(${task.id})" 
+                            class="ml-2 text-gray-300 hover:text-[var(--color-beni)] p-2 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100" 
+                            title="削除">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    `;
+                }
+                listElement.appendChild(li);
+            });
+        }
+
+        // --- ユーティリティ ---
+
+        // エラーメッセージ表示
+        function showError(message) {
+            const container = document.getElementById('error-container');
+            const errorDiv = document.createElement('div');
+            
+            errorDiv.className = 'bg-[var(--color-beni)] text-white px-6 py-4 rounded shadow-lg mb-2 fade-in flex items-center justify-between pointer-events-auto';
+            errorDiv.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>${escapeHtml(message)}</span>
+                </div>
+                <button onclick="this.parentElement.remove()" class="text-white hover:text-gray-200">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+
+            container.appendChild(errorDiv);
+
+            // 5秒後に自動消去
+            setTimeout(() => {
+                if (errorDiv.parentElement) {
+                    errorDiv.style.opacity = '0';
+                    errorDiv.style.transform = 'translateY(-10px)';
+                    setTimeout(() => errorDiv.remove(), 300);
+                }
+            }, 5000);
+        }
+
+        // HTMLエスケープ（XSS対策）
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>"']/g, function(match) {
+                const escape = {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                };
+                return escape[match];
+            });
+        }
+    </script>
+</body>
+</html>

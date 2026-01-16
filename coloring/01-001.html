@@ -1,0 +1,494 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trust Bank ToDo</title>
+    
+    <!-- Google Fonts: 重厚感のある明朝体と読みやすいゴシック体 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome (Icons) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Custom Config for Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        bank: {
+                            navy: '#0f172a',    // 深いネイビー
+                            blue: '#1e3a8a',    // 信頼のブルー
+                            gold: '#ca8a04',    // 真鍮のようなゴールド（アクセント）
+                            light: '#f8fafc',   // 清潔な白
+                            gray: '#64748b',    // 中間グレー
+                            paper: '#ffffff',   // 真っ白な紙
+                        }
+                    },
+                    fontFamily: {
+                        serif: ['"Noto Serif JP"', 'serif'],
+                        sans: ['"Noto Sans JP"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #f1f5f9;
+            /* 紙の質感のような微妙なパターン（オプション） */
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        /* カスタムスクロールバー */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b; 
+        }
+
+        /* 完了時のアニメーション */
+        .task-enter {
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="font-sans text-slate-800 min-h-screen flex flex-col items-center py-8 px-4">
+
+    <!-- ヘッダー -->
+    <header class="w-full max-w-3xl mb-8 text-center">
+        <div class="inline-block border-b-4 border-bank-navy pb-2 px-8">
+            <h1 class="text-3xl md:text-4xl font-serif font-bold text-bank-navy tracking-widest">
+                <i class="fa-solid fa-building-columns mr-3 text-bank-gold"></i>業務タスク管理帳
+            </h1>
+            <p class="text-bank-gray mt-2 text-sm font-serif">Trust & Reliability since 2026</p>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="w-full max-w-3xl bg-bank-paper rounded-sm shadow-xl border border-slate-200 overflow-hidden relative">
+        <!-- 上部装飾バー -->
+        <div class="h-2 bg-bank-navy w-full"></div>
+
+        <!-- コントロールパネル -->
+        <div class="p-6 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
+            <!-- 新規作成ボタン -->
+            <button onclick="openModal()" class="w-full md:w-auto bg-bank-navy hover:bg-slate-800 text-white font-serif px-6 py-2 rounded-sm shadow transition-all duration-200 flex items-center justify-center gap-2 group">
+                <i class="fa-solid fa-pen-nib group-hover:-translate-y-0.5 transition-transform"></i>
+                <span>新規項目作成</span>
+            </button>
+
+            <!-- フィルター -->
+            <div class="flex items-center gap-2 w-full md:w-auto justify-end">
+                <label for="filterCheckbox" class="text-sm font-bold text-bank-navy cursor-pointer select-none">未完了のみ表示</label>
+                <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                    <input type="checkbox" name="toggle" id="filterCheckbox" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out translate-x-0 border-slate-300 checked:translate-x-full checked:border-bank-gold checked:bg-white focus:outline-none"/>
+                    <label for="filterCheckbox" class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300 cursor-pointer transition-colors duration-200"></label>
+                </div>
+                <!-- スタイリング用のCSSハック -->
+                <style>
+                    #filterCheckbox:checked + .toggle-label {
+                        background-color: #1e3a8a;
+                    }
+                </style>
+            </div>
+        </div>
+
+        <!-- タスクリストエリア -->
+        <div id="taskListContainer" class="p-0 min-h-[400px]">
+            <ul id="todoList" class="divide-y divide-slate-100">
+                <!-- JavaScriptでここにリストが描画されます -->
+            </ul>
+            
+            <!-- 空の状態の表示 -->
+            <div id="emptyState" class="hidden flex flex-col items-center justify-center py-20 text-slate-400">
+                <i class="fa-regular fa-clipboard text-5xl mb-4 text-slate-300"></i>
+                <p class="font-serif">表示するタスクがありません</p>
+            </div>
+        </div>
+        
+        <!-- 下部ステータスバー -->
+        <div class="bg-slate-100 px-6 py-3 text-xs text-slate-500 flex justify-between items-center font-serif border-t border-slate-200">
+            <span id="taskCount">全 0 件</span>
+            <span>SYSTEM READY</span>
+        </div>
+    </main>
+
+    <!-- モーダル（新規作成・編集用） -->
+    <div id="taskModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity duration-300 pointer-events-none">
+        <div class="bg-white w-full max-w-md rounded-sm shadow-2xl transform scale-95 transition-transform duration-300 border-t-4 border-bank-gold" id="modalContent">
+            <div class="p-6">
+                <h2 id="modalTitle" class="text-xl font-serif font-bold text-bank-navy mb-4 border-b pb-2">新規タスク登録</h2>
+                
+                <input type="hidden" id="editTaskId">
+                
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">内容</label>
+                    <input type="text" id="taskInput" class="w-full border border-slate-300 p-3 rounded-sm focus:outline-none focus:border-bank-blue focus:ring-1 focus:ring-bank-blue transition-colors font-serif bg-slate-50" placeholder="タスクを入力してください...">
+                </div>
+
+                <div class="flex justify-end gap-3 mt-6">
+                    <button onclick="closeModal()" class="px-4 py-2 text-slate-600 hover:text-slate-800 font-serif text-sm">キャンセル</button>
+                    <button onclick="saveTodo()" class="bg-bank-navy hover:bg-bank-blue text-white px-6 py-2 rounded-sm shadow font-serif text-sm transition-colors">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通知トースト (エラー/成功メッセージ用) -->
+    <div id="toast" class="fixed bottom-4 right-4 z-50 transform translate-y-20 opacity-0 transition-all duration-300 max-w-sm w-full">
+        <div id="toastContent" class="bg-white border-l-4 p-4 shadow-lg rounded-sm flex items-start gap-3">
+            <div id="toastIcon" class="text-xl mt-0.5"></div>
+            <div>
+                <h3 id="toastTitle" class="font-bold text-sm"></h3>
+                <p id="toastMessage" class="text-xs text-slate-600 mt-1"></p>
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-8 text-slate-400 text-xs font-serif">
+        &copy; 2026 Trust Bank Todo System. All Rights Reserved.
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        /**
+         * アプリケーションの状態管理
+         */
+        const state = {
+            todos: [],
+            filterIncomplete: false,
+            isEditing: false
+        };
+
+        // 初期ダミーデータ（重厚な雰囲気のタスク）
+        const dummyData = [
+            { id: 1, text: "上期決算報告書の最終確認", completed: false, createdAt: Date.now() },
+            { id: 2, text: "本店営業部との定例会議", completed: true, createdAt: Date.now() - 100000 },
+            { id: 3, text: "システムセキュリティ監査の対応", completed: false, createdAt: Date.now() - 200000 },
+            { id: 4, text: "新規融資案件の稟議書作成", completed: false, createdAt: Date.now() - 300000 },
+            { id: 5, text: "特別顧客への挨拶状送付", completed: true, createdAt: Date.now() - 400000 }
+        ];
+
+        /**
+         * 初期化処理
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            // ローカルストレージから読み込むか、ダミーデータを使用
+            const stored = localStorage.getItem('trustBankTodos');
+            if (stored) {
+                try {
+                    state.todos = JSON.parse(stored);
+                } catch (e) {
+                    showToast('error', 'データ読み込みエラー', '保存データの形式が不正です。初期化しました。');
+                    state.todos = [...dummyData];
+                }
+            } else {
+                state.todos = [...dummyData];
+            }
+
+            render();
+            
+            // イベントリスナーの設定
+            document.getElementById('filterCheckbox').addEventListener('change', (e) => {
+                state.filterIncomplete = e.target.checked;
+                render();
+            });
+
+            // Enterキーでの保存対応
+            document.getElementById('taskInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') saveTodo();
+            });
+        });
+
+        /**
+         * 画面描画（レンダリング）関数
+         */
+        function render() {
+            const listEl = document.getElementById('todoList');
+            const emptyEl = document.getElementById('emptyState');
+            const countEl = document.getElementById('taskCount');
+            
+            listEl.innerHTML = '';
+
+            // フィルタリング処理
+            const filteredTodos = state.todos.filter(todo => {
+                if (state.filterIncomplete) return !todo.completed;
+                return true;
+            });
+
+            // ソート（未完了を上に、その中で作成日順）
+            filteredTodos.sort((a, b) => {
+                if (a.completed === b.completed) return b.createdAt - a.createdAt;
+                return a.completed ? 1 : -1;
+            });
+
+            // 件数表示
+            countEl.textContent = `全 ${state.todos.length} 件 (表示: ${filteredTodos.length} 件)`;
+
+            if (filteredTodos.length === 0) {
+                emptyEl.classList.remove('hidden');
+                return;
+            } else {
+                emptyEl.classList.add('hidden');
+            }
+
+            filteredTodos.forEach(todo => {
+                const li = document.createElement('li');
+                li.className = `task-enter group flex items-center p-4 hover:bg-slate-50 transition-colors border-l-4 ${todo.completed ? 'border-transparent bg-slate-50/50' : 'border-bank-gold bg-white'}`;
+                
+                // 完了状態に応じたスタイル
+                const textStyle = todo.completed ? 'text-slate-400 line-through' : 'text-bank-navy font-medium';
+                const checkIcon = todo.completed ? 'fa-solid fa-square-check text-bank-navy' : 'fa-regular fa-square text-slate-300 group-hover:text-bank-gold';
+
+                li.innerHTML = `
+                    <button onclick="toggleComplete(${todo.id})" class="mr-4 text-2xl focus:outline-none transition-colors" title="${todo.completed ? '未完了に戻す' : '完了にする'}">
+                        <i class="${checkIcon}"></i>
+                    </button>
+                    
+                    <div class="flex-grow cursor-pointer" onclick="openEditModal(${todo.id})" title="クリックして編集">
+                        <span class="${textStyle} text-lg font-serif transition-all">${escapeHtml(todo.text)}</span>
+                        ${todo.completed ? '<span class="ml-2 text-xs text-slate-400 border border-slate-300 px-1 rounded">済</span>' : ''}
+                    </div>
+
+                    <button onclick="deleteTodo(${todo.id})" class="ml-4 text-slate-300 hover:text-red-600 p-2 transition-colors focus:outline-none opacity-0 group-hover:opacity-100 focus:opacity-100" title="削除">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                `;
+                listEl.appendChild(li);
+            });
+        }
+
+        /**
+         * 新規タスク追加・更新処理
+         */
+        function saveTodo() {
+            const input = document.getElementById('taskInput');
+            const editId = document.getElementById('editTaskId').value;
+            const text = input.value.trim();
+
+            // エラーハンドリング：空文字チェック
+            if (!text) {
+                showToast('error', '入力エラー', 'タスクの内容を入力してください。');
+                input.focus();
+                return;
+            }
+
+            try {
+                if (editId) {
+                    // 更新モード
+                    const index = state.todos.findIndex(t => t.id === parseInt(editId));
+                    if (index !== -1) {
+                        state.todos[index].text = text;
+                        showToast('success', '更新完了', 'タスクの内容を変更しました。');
+                    } else {
+                        throw new Error('更新対象が見つかりません');
+                    }
+                } else {
+                    // 新規作成モード
+                    const newTodo = {
+                        id: Date.now(),
+                        text: text,
+                        completed: false,
+                        createdAt: Date.now()
+                    };
+                    state.todos.push(newTodo);
+                    showToast('success', '登録完了', '新しいタスクを追加しました。');
+                }
+
+                saveToStorage();
+                render();
+                closeModal();
+
+            } catch (error) {
+                showToast('error', 'システムエラー', '処理に失敗しました: ' + error.message);
+            }
+        }
+
+        /**
+         * 完了状態の切り替え
+         */
+        function toggleComplete(id) {
+            const index = state.todos.findIndex(t => t.id === id);
+            if (index !== -1) {
+                state.todos[index].completed = !state.todos[index].completed;
+                saveToStorage();
+                render();
+            } else {
+                showToast('error', 'エラー', '対象のタスクが見つかりません。');
+            }
+        }
+
+        /**
+         * タスク削除
+         */
+        function deleteTodo(id) {
+            // 確認ダイアログの代わりにカスタムUIを使いたいところですが、
+            // シンプルさと安全性のためにブラウザ標準を使用します（要件の「ユーザーフレンドリー」と相談）
+            // ここでは誤操作防止のため確認を入れます。
+            if (!confirm('この項目を削除してもよろしいですか？')) return;
+
+            const initialLength = state.todos.length;
+            state.todos = state.todos.filter(t => t.id !== id);
+
+            if (state.todos.length < initialLength) {
+                saveToStorage();
+                render();
+                showToast('info', '削除完了', 'タスクを削除しました。');
+            } else {
+                showToast('error', '削除失敗', '削除できませんでした。');
+            }
+        }
+
+        /**
+         * モーダル制御関連
+         */
+        function openModal() {
+            state.isEditing = false;
+            document.getElementById('modalTitle').textContent = '新規タスク登録';
+            document.getElementById('taskInput').value = '';
+            document.getElementById('editTaskId').value = '';
+            
+            toggleModalVisibility(true);
+            setTimeout(() => document.getElementById('taskInput').focus(), 100);
+        }
+
+        function openEditModal(id) {
+            const todo = state.todos.find(t => t.id === id);
+            if (!todo) return;
+
+            state.isEditing = true;
+            document.getElementById('modalTitle').textContent = 'タスク内容の編集';
+            document.getElementById('taskInput').value = todo.text;
+            document.getElementById('editTaskId').value = todo.id;
+            
+            toggleModalVisibility(true);
+            setTimeout(() => document.getElementById('taskInput').focus(), 100);
+        }
+
+        function closeModal() {
+            toggleModalVisibility(false);
+        }
+
+        function toggleModalVisibility(show) {
+            const modal = document.getElementById('taskModal');
+            const content = document.getElementById('modalContent');
+            
+            if (show) {
+                modal.classList.remove('hidden');
+                // 少し遅延させてopacityを適用することでアニメーションさせる
+                requestAnimationFrame(() => {
+                    modal.classList.remove('opacity-0', 'pointer-events-none');
+                    content.classList.remove('scale-95');
+                    content.classList.add('scale-100');
+                });
+            } else {
+                modal.classList.add('opacity-0', 'pointer-events-none');
+                content.classList.remove('scale-100');
+                content.classList.add('scale-95');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                }, 300);
+            }
+        }
+
+        /**
+         * ユーティリティ: トースト通知
+         */
+        let toastTimeout;
+        function showToast(type, title, message) {
+            const toast = document.getElementById('toast');
+            const content = document.getElementById('toastContent');
+            const iconEl = document.getElementById('toastIcon');
+            const titleEl = document.getElementById('toastTitle');
+            const msgEl = document.getElementById('toastMessage');
+
+            // スタイル設定
+            let borderColor, iconClass, iconColor;
+            switch(type) {
+                case 'success':
+                    borderColor = 'border-green-500';
+                    iconClass = 'fa-solid fa-circle-check';
+                    iconColor = 'text-green-500';
+                    break;
+                case 'error':
+                    borderColor = 'border-red-500';
+                    iconClass = 'fa-solid fa-circle-exclamation';
+                    iconColor = 'text-red-500';
+                    break;
+                default: // info
+                    borderColor = 'border-bank-blue';
+                    iconClass = 'fa-solid fa-circle-info';
+                    iconColor = 'text-bank-blue';
+            }
+
+            // クラスのリセットと適用
+            content.className = `bg-white border-l-4 p-4 shadow-lg rounded-sm flex items-start gap-3 ${borderColor}`;
+            iconEl.className = `${iconClass} ${iconColor} text-xl mt-0.5`;
+            
+            titleEl.textContent = title;
+            msgEl.textContent = message;
+
+            // 表示アニメーション
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            
+            // 既存のタイマーがあればクリア
+            if (toastTimeout) clearTimeout(toastTimeout);
+            
+            // 3秒後に非表示
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        /**
+         * ユーティリティ: ローカルストレージ保存
+         */
+        function saveToStorage() {
+            try {
+                localStorage.setItem('trustBankTodos', JSON.stringify(state.todos));
+            } catch (e) {
+                showToast('error', '保存エラー', 'ローカルストレージへの保存に失敗しました。');
+            }
+        }
+
+        /**
+         * ユーティリティ: HTMLエスケープ（XSS対策）
+         */
+        function escapeHtml(str) {
+            if (typeof str !== 'string') return str;
+            return str.replace(/[&<>"'`]/g, function (match) {
+                const escape = {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;',
+                    '`': '&#x60;'
+                };
+                return escape[match];
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,571 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stardust Tasks - 神秘的なToDo</title>
+    <style>
+        /* --- CSS Variables & Reset --- */
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --primary-accent: #b06ab3; /* Mystical Violet */
+            --secondary-accent: #4568dc; /* Starry Blue */
+            --text-main: #ffffff;
+            --text-muted: #a0a0a0;
+            --danger: #ff6b6b;
+            --success: #51cf66;
+            --font-family: "Helvetica Neue", Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* --- Starry Background Effect (Pure CSS) --- */
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: 
+                radial-gradient(2px 2px at 20px 30px, #eee, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 40px 70px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 50px 160px, #ddd, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 90px 40px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 130px 80px, #fff, rgba(0,0,0,0));
+            background-repeat: repeat;
+            background-size: 200px 200px;
+            opacity: 0.3;
+            animation: twinkle 5s infinite alternate;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        @keyframes twinkle {
+            0% { opacity: 0.3; }
+            100% { opacity: 0.5; }
+        }
+
+        /* --- Main Container --- */
+        .app-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 20px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* --- Header --- */
+        header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            font-weight: 200;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(176, 106, 179, 0.7);
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        /* --- Error Notification --- */
+        .error-toast {
+            background: rgba(255, 107, 107, 0.2);
+            border: 1px solid var(--danger);
+            color: #ffcccc;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            display: none; /* Hidden by default */
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        /* --- Input Area --- */
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            color: white;
+            padding: 12px 15px;
+            border-radius: 10px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--primary-accent);
+            box-shadow: 0 0 10px rgba(176, 106, 179, 0.3);
+        }
+
+        button.add-btn {
+            background: linear-gradient(45deg, var(--primary-accent), var(--secondary-accent));
+            border: none;
+            color: white;
+            padding: 0 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button.add-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(176, 106, 179, 0.4);
+        }
+
+        /* --- Filters --- */
+        .filters {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .filter-btn {
+            background: transparent;
+            border: 1px solid var(--glass-border);
+            color: var(--text-muted);
+            padding: 6px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s;
+        }
+
+        .filter-btn.active {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            border-color: white;
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
+        }
+
+        /* --- ToDo List --- */
+        ul {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-height: 200px; /* Space for empty state */
+        }
+
+        li.todo-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 12px 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            animation: slideIn 0.3s ease-out;
+            border: 1px solid transparent;
+        }
+
+        li.todo-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--glass-border);
+        }
+
+        li.todo-item.completed {
+            opacity: 0.6;
+        }
+
+        li.todo-item.completed .todo-text {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        /* Checkbox Styling */
+        .checkbox {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--primary-accent);
+            border-radius: 50%;
+            cursor: pointer;
+            position: relative;
+            flex-shrink: 0;
+            transition: background 0.2s;
+        }
+
+        .checkbox:checked {
+            background: var(--primary-accent);
+        }
+
+        .checkbox:checked::after {
+            content: '?';
+            position: absolute;
+            color: white;
+            font-size: 12px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Text & Edit Mode */
+        .todo-content {
+            flex: 1;
+            cursor: text;
+        }
+
+        .todo-text {
+            word-break: break-all;
+            line-height: 1.4;
+        }
+
+        .edit-input {
+            width: 100%;
+            background: rgba(0,0,0,0.5);
+            border: none;
+            border-bottom: 1px solid var(--primary-accent);
+            color: white;
+            padding: 4px;
+            font-size: 1rem;
+            font-family: inherit;
+            outline: none;
+        }
+
+        /* Delete Button */
+        .delete-btn {
+            background: transparent;
+            border: none;
+            color: var(--glass-border);
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 5px;
+            transition: color 0.2s;
+            line-height: 1;
+        }
+
+        .delete-btn:hover {
+            color: var(--danger);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            color: var(--text-muted);
+            margin-top: 50px;
+            font-style: italic;
+        }
+
+        /* --- Animations --- */
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* --- Responsive --- */
+        @media (max-width: 480px) {
+            .app-container {
+                margin: 10px;
+                padding: 20px;
+            }
+            h1 { font-size: 1.5rem; }
+            button.add-btn { padding: 0 15px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <header>
+            <h1>Stardust Tasks</h1>
+            <p class="subtitle">星空の下で、思考を整理する</p>
+        </header>
+
+        <!-- エラーメッセージ表示エリア -->
+        <div id="error-box" class="error-toast"></div>
+
+        <!-- 入力エリア -->
+        <div class="input-group">
+            <input type="text" id="new-todo-input" placeholder="新しい星（タスク）を追加..." aria-label="新しいタスク">
+            <button id="add-btn" class="add-btn">追加</button>
+        </div>
+
+        <!-- フィルタリング -->
+        <div class="filters">
+            <button class="filter-btn active" data-filter="all">すべて</button>
+            <button class="filter-btn" data-filter="active">未完了の星々</button>
+        </div>
+
+        <!-- タスクリスト -->
+        <ul id="todo-list">
+            <!-- JavaScriptでここにリストアイテムが挿入されます -->
+        </ul>
+    </div>
+
+    <script>
+        // --- 初期データ (ダミーデータ5件) ---
+        const DUMMY_DATA = [
+            { id: 1, text: "星座の観測計画を立てる", completed: false },
+            { id: 2, text: "望遠鏡のレンズを磨く", completed: true },
+            { id: 3, text: "古代の魔導書を解読する", completed: false },
+            { id: 4, text: "銀河鉄道のチケットを予約", completed: false },
+            { id: 5, text: "月の満ち欠けを記録する", completed: true }
+        ];
+
+        // --- State Management ---
+        let todos = [];
+        let currentFilter = 'all'; // 'all' or 'active'
+
+        // --- DOM Elements ---
+        const todoListEl = document.getElementById('todo-list');
+        const inputEl = document.getElementById('new-todo-input');
+        const addBtn = document.getElementById('add-btn');
+        const errorBox = document.getElementById('error-box');
+        const filterBtns = document.querySelectorAll('.filter-btn');
+
+        // --- Core Functions ---
+
+        // 初期化
+        function init() {
+            // ローカルストレージになければダミーデータを使用
+            try {
+                const stored = localStorage.getItem('stardust_todos');
+                if (stored) {
+                    todos = JSON.parse(stored);
+                } else {
+                    todos = [...DUMMY_DATA];
+                    saveToStorage();
+                }
+                render();
+            } catch (e) {
+                showError("データの読み込みに失敗しました。星々が雲に隠れています。");
+                console.error(e);
+            }
+        }
+
+        // データの保存
+        function saveToStorage() {
+            try {
+                localStorage.setItem('stardust_todos', JSON.stringify(todos));
+            } catch (e) {
+                showError("保存に失敗しました。魔法力が足りません。");
+            }
+        }
+
+        // エラー表示
+        function showError(msg) {
+            errorBox.textContent = msg;
+            errorBox.style.display = 'block';
+            
+            // 3秒後に消す
+            setTimeout(() => {
+                errorBox.style.display = 'none';
+            }, 3000);
+        }
+
+        // レンダリング
+        function render() {
+            todoListEl.innerHTML = '';
+
+            // フィルタリング処理
+            const filteredTodos = todos.filter(todo => {
+                if (currentFilter === 'active') return !todo.completed;
+                return true;
+            });
+
+            if (filteredTodos.length === 0) {
+                const emptyMsg = currentFilter === 'active' 
+                    ? "未完了のタスクはありません。夜空は静かです。" 
+                    : "タスクがありません。新しい星を探しましょう。";
+                todoListEl.innerHTML = `<div class="empty-state">${emptyMsg}</div>`;
+                return;
+            }
+
+            filteredTodos.forEach(todo => {
+                const li = document.createElement('li');
+                li.className = `todo-item ${todo.completed ? 'completed' : ''}`;
+                li.setAttribute('data-id', todo.id);
+
+                // チェックボックス
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'checkbox';
+                checkbox.checked = todo.completed;
+                checkbox.onchange = () => toggleComplete(todo.id);
+
+                // テキストコンテナ
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'todo-content';
+                
+                // テキスト表示部分
+                const span = document.createElement('span');
+                span.className = 'todo-text';
+                span.textContent = todo.text;
+                span.title = "クリックして編集";
+                span.onclick = () => enterEditMode(todo.id, contentDiv);
+                
+                contentDiv.appendChild(span);
+
+                // 削除ボタン
+                const delBtn = document.createElement('button');
+                delBtn.className = 'delete-btn';
+                delBtn.innerHTML = '&times;'; // × mark
+                delBtn.ariaLabel = '削除';
+                delBtn.onclick = () => deleteTodo(todo.id);
+
+                li.appendChild(checkbox);
+                li.appendChild(contentDiv);
+                li.appendChild(delBtn);
+                todoListEl.appendChild(li);
+            });
+        }
+
+        // --- Action Handlers ---
+
+        // タスク追加
+        function addTodo() {
+            const text = inputEl.value.trim();
+            if (!text) {
+                showError("星に名前をつけてください（タスク名が空です）。");
+                return;
+            }
+
+            const newTodo = {
+                id: Date.now(),
+                text: text,
+                completed: false
+            };
+
+            todos.unshift(newTodo); // リストの先頭に追加
+            saveToStorage();
+            render();
+            inputEl.value = ''; // 入力欄クリア
+        }
+
+        // 完了状態の切り替え
+        function toggleComplete(id) {
+            const todo = todos.find(t => t.id === id);
+            if (todo) {
+                todo.completed = !todo.completed;
+                saveToStorage();
+                render();
+            } else {
+                showError("対象の星が見つかりません。");
+            }
+        }
+
+        // 削除
+        function deleteTodo(id) {
+            if(confirm("この星（タスク）を消滅させますか？")) {
+                todos = todos.filter(t => t.id !== id);
+                saveToStorage();
+                render();
+            }
+        }
+
+        // 編集モード開始
+        function enterEditMode(id, container) {
+            const todo = todos.find(t => t.id === id);
+            if (!todo) return;
+            if (todo.completed) return; // 完了済みは編集させないUX（任意）
+
+            const currentText = todo.text;
+            
+            // 入力フォームに置換
+            container.innerHTML = '';
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = currentText;
+            input.className = 'edit-input';
+            
+            // 編集完了ハンドラ
+            const saveEdit = () => {
+                const newText = input.value.trim();
+                if (newText) {
+                    todo.text = newText;
+                    saveToStorage();
+                } else if (newText === '') {
+                   // 空になった場合は編集キャンセル扱いで元に戻すか、削除するか。
+                   // ここでは元に戻す処理とする
+                }
+                render();
+            };
+
+            // フォーカスを外した時とEnterキーで保存
+            input.onblur = saveEdit;
+            input.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    input.blur(); // blurイベントを発火させる
+                }
+            };
+
+            container.appendChild(input);
+            input.focus();
+        }
+
+        // フィルタリング切り替え
+        function setFilter(filterType) {
+            currentFilter = filterType;
+            
+            // ボタンの見た目更新
+            filterBtns.forEach(btn => {
+                if(btn.dataset.filter === filterType) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            render();
+        }
+
+        // --- Event Listeners ---
+
+        addBtn.addEventListener('click', addTodo);
+        
+        inputEl.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addTodo();
+        });
+
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                setFilter(e.target.dataset.filter);
+            });
+        });
+
+        // --- Start App ---
+        init();
+
+    </script>
+</body>
+</html>

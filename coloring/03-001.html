@@ -1,0 +1,438 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Morning Sun ToDo</title>
+    
+    <!-- Google Fonts: 親しみやすい丸ゴシック体 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"M PLUS Rounded 1c"', 'sans-serif'],
+                    },
+                    colors: {
+                        sun: {
+                            100: '#FFF9C4', // 薄い黄色
+                            300: '#FFF176', // 中間の黄色
+                            500: '#FDB813', // 太陽の黄色
+                            600: '#F57F17', // 濃いオレンジ
+                        },
+                        sky: {
+                            50: '#F0F9FF', // フレッシュな白/青
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                        'bounce-short': 'bounceShort 0.5s ease-in-out 1',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        bounceShort: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-5px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* カスタムスクロールバー */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #FDB813; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #F57F17; 
+        }
+
+        /* 完了時の取り消し線アニメーション用 */
+        .task-text {
+            transition: color 0.3s ease;
+            position: relative;
+        }
+        .task-text.completed {
+            color: #A0AEC0;
+        }
+        .task-text.completed::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 100%;
+            height: 2px;
+            background: #CBD5E0;
+            transform: scaleX(1);
+            transform-origin: left;
+            animation: strikethrough 0.3s ease-out forwards;
+        }
+        @keyframes strikethrough {
+            from { transform: scaleX(0); }
+            to { transform: scaleX(1); }
+        }
+        
+        /* 編集モードのスタイル */
+        .edit-input {
+            width: 100%;
+            border: 2px solid #FDB813;
+            border-radius: 0.375rem;
+            padding: 0.25rem 0.5rem;
+            outline: none;
+            background-color: #FFF9C4;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-sun-100 to-white min-h-screen text-gray-700 flex flex-col items-center pt-10 pb-10 px-4">
+
+    <!-- エラーメッセージ表示エリア (固定) -->
+    <div id="error-container" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4 hidden">
+        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-lg flex items-center" role="alert">
+            <i class="fas fa-exclamation-circle mr-2"></i>
+            <p id="error-message">エラーが発生しました</p>
+            <button onclick="hideError()" class="ml-auto text-red-700 hover:text-red-900">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- メインコンテナ -->
+    <main class="w-full max-w-lg bg-white rounded-3xl shadow-xl overflow-hidden animate-fade-in border-t-8 border-sun-500">
+        
+        <!-- ヘッダー -->
+        <header class="bg-white p-8 pb-4 text-center relative">
+            <div class="absolute top-0 right-0 p-4 opacity-10">
+                <i class="fas fa-sun text-8xl text-sun-500"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2 flex items-center justify-center gap-2">
+                <i class="fas fa-sun text-sun-500 animate-bounce-short"></i>
+                <span>Morning ToDo</span>
+            </h1>
+            <p class="text-gray-500 text-sm">今日という一日を素晴らしいものに</p>
+        </header>
+
+        <!-- 入力エリア -->
+        <div class="px-8 py-4">
+            <form id="todo-form" class="relative group">
+                <input 
+                    type="text" 
+                    id="todo-input" 
+                    placeholder="新しいタスクを入力..." 
+                    class="w-full bg-gray-50 text-gray-700 border-2 border-gray-200 rounded-full py-3 px-6 pr-14 focus:outline-none focus:border-sun-500 focus:bg-white transition duration-300 placeholder-gray-400 shadow-sm"
+                    autocomplete="off"
+                >
+                <button 
+                    type="submit" 
+                    class="absolute right-2 top-1.5 bg-sun-500 hover:bg-sun-600 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-md transition duration-300 transform hover:scale-105"
+                >
+                    <i class="fas fa-plus"></i>
+                </button>
+            </form>
+        </div>
+
+        <!-- フィルタータブ -->
+        <div class="px-8 flex space-x-4 border-b border-gray-100">
+            <button 
+                id="filter-all" 
+                class="filter-btn active pb-3 px-2 font-medium text-sun-600 border-b-2 border-sun-500 transition-colors"
+                onclick="setFilter('all')"
+            >
+                すべて
+            </button>
+            <button 
+                id="filter-active" 
+                class="filter-btn pb-3 px-2 font-medium text-gray-400 hover:text-gray-600 transition-colors border-b-2 border-transparent"
+                onclick="setFilter('active')"
+            >
+                未完了のみ
+            </button>
+        </div>
+
+        <!-- タスクリスト -->
+        <div class="p-4 bg-gray-50 min-h-[300px]">
+            <ul id="todo-list" class="space-y-3">
+                <!-- JavaScriptでここにリストが生成されます -->
+            </ul>
+            
+            <!-- 空の状態の表示 -->
+            <div id="empty-state" class="hidden flex-col items-center justify-center py-10 text-gray-400">
+                <i class="fas fa-mug-hot text-4xl mb-3 text-gray-300"></i>
+                <p>タスクはありません。<br>ゆっくり過ごしましょう！</p>
+            </div>
+        </div>
+
+        <!-- フッター -->
+        <footer class="bg-white p-4 text-center text-xs text-gray-400">
+            &copy; Morning Sun ToDo App
+        </footer>
+    </main>
+
+    <script>
+        // --- データ管理 ---
+        
+        // ダミーデータ (要件: 5件)
+        let todos = [
+            { id: 1, text: "窓を開けて新鮮な空気を入れる", completed: true },
+            { id: 2, text: "コップ一杯の水を飲む", completed: true },
+            { id: 3, text: "今日の目標を3つ書き出す", completed: false },
+            { id: 4, text: "15分間読書をする", completed: false },
+            { id: 5, text: "笑顔で「おはよう」と言う", completed: false }
+        ];
+
+        let currentFilter = 'all'; // 'all' or 'active'
+        let editingId = null; // 現在編集中のID
+
+        // --- DOM要素 ---
+        const todoListEl = document.getElementById('todo-list');
+        const todoForm = document.getElementById('todo-form');
+        const todoInput = document.getElementById('todo-input');
+        const emptyStateEl = document.getElementById('empty-state');
+        const errorContainer = document.getElementById('error-container');
+        const errorMessageEl = document.getElementById('error-message');
+        const btnAll = document.getElementById('filter-all');
+        const btnActive = document.getElementById('filter-active');
+
+        // --- 初期化 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderTodos();
+        });
+
+        // --- エラーハンドリング ---
+        function showError(message) {
+            errorMessageEl.textContent = message;
+            errorContainer.classList.remove('hidden');
+            errorContainer.classList.add('animate-bounce-short');
+            
+            // 3秒後に自動で消える
+            setTimeout(() => {
+                hideError();
+            }, 3000);
+        }
+
+        function hideError() {
+            errorContainer.classList.add('hidden');
+        }
+
+        // --- データ操作 ---
+
+        // 新規作成
+        todoForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = todoInput.value.trim();
+
+            if (!text) {
+                showError("タスクの内容を入力してください。");
+                return;
+            }
+
+            try {
+                const newTodo = {
+                    id: Date.now(),
+                    text: text,
+                    completed: false
+                };
+                
+                // 配列の先頭に追加
+                todos.unshift(newTodo);
+                
+                todoInput.value = '';
+                renderTodos();
+                
+                // 成功時の微細なフィードバック（必要であれば）
+            } catch (error) {
+                showError("データの更新に失敗しました。");
+                console.error(error);
+            }
+        });
+
+        // 削除
+        function deleteTodo(id) {
+            if(confirm('このタスクを削除してもよろしいですか？')) {
+                try {
+                    todos = todos.filter(todo => todo.id !== id);
+                    renderTodos();
+                } catch (error) {
+                    showError("削除中にエラーが発生しました。");
+                }
+            }
+        }
+
+        // 完了状態の切り替え
+        function toggleComplete(id) {
+            try {
+                const todo = todos.find(t => t.id === id);
+                if (todo) {
+                    todo.completed = !todo.completed;
+                    renderTodos();
+                }
+            } catch (error) {
+                showError("ステータスの更新に失敗しました。");
+            }
+        }
+
+        // 編集モード開始
+        function startEdit(id) {
+            editingId = id;
+            renderTodos();
+            
+            // 入力欄にフォーカスを当てる
+            const input = document.getElementById(`edit-input-${id}`);
+            if (input) {
+                input.focus();
+                // カーソルを末尾に
+                const len = input.value.length;
+                input.setSelectionRange(len, len);
+            }
+        }
+
+        // 編集保存
+        function saveEdit(id, newText) {
+            if (!newText.trim()) {
+                showError("タスクの内容は空にできません。");
+                return;
+            }
+
+            try {
+                const todo = todos.find(t => t.id === id);
+                if (todo) {
+                    todo.text = newText.trim();
+                    editingId = null;
+                    renderTodos();
+                }
+            } catch (error) {
+                showError("編集の保存に失敗しました。");
+            }
+        }
+
+        // 編集キャンセル
+        function cancelEdit() {
+            editingId = null;
+            renderTodos();
+        }
+
+        // --- フィルター操作 ---
+        function setFilter(filterType) {
+            currentFilter = filterType;
+            
+            // ボタンのスタイル更新
+            if (filterType === 'all') {
+                btnAll.className = "filter-btn active pb-3 px-2 font-medium text-sun-600 border-b-2 border-sun-500 transition-colors";
+                btnActive.className = "filter-btn pb-3 px-2 font-medium text-gray-400 hover:text-gray-600 transition-colors border-b-2 border-transparent";
+            } else {
+                btnAll.className = "filter-btn pb-3 px-2 font-medium text-gray-400 hover:text-gray-600 transition-colors border-b-2 border-transparent";
+                btnActive.className = "filter-btn active pb-3 px-2 font-medium text-sun-600 border-b-2 border-sun-500 transition-colors";
+            }
+            
+            renderTodos();
+        }
+
+        // --- レンダリング (UI生成) ---
+        function renderTodos() {
+            todoListEl.innerHTML = '';
+
+            // フィルタリング
+            const filteredTodos = todos.filter(todo => {
+                if (currentFilter === 'active') {
+                    return !todo.completed;
+                }
+                return true;
+            });
+
+            // 空状態の表示切り替え
+            if (filteredTodos.length === 0) {
+                emptyStateEl.classList.remove('hidden');
+                emptyStateEl.classList.add('flex');
+            } else {
+                emptyStateEl.classList.add('hidden');
+                emptyStateEl.classList.remove('flex');
+            }
+
+            // リスト生成
+            filteredTodos.forEach(todo => {
+                const li = document.createElement('li');
+                li.className = "bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between transition hover:shadow-md animate-fade-in group";
+                
+                // 編集モードかどうかで分岐
+                if (editingId === todo.id) {
+                    li.innerHTML = `
+                        <div class="flex-grow flex items-center gap-2">
+                            <input 
+                                type="text" 
+                                id="edit-input-${todo.id}" 
+                                value="${todo.text}" 
+                                class="edit-input text-gray-700"
+                                onblur="saveEdit(${todo.id}, this.value)"
+                                onkeydown="if(event.key === 'Enter') saveEdit(${todo.id}, this.value); if(event.key === 'Escape') cancelEdit();"
+                            >
+                        </div>
+                        <div class="flex items-center ml-2">
+                             <button onmousedown="saveEdit(${todo.id}, document.getElementById('edit-input-${todo.id}').value)" class="text-sun-500 hover:text-sun-600 p-2">
+                                <i class="fas fa-check"></i>
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    // 通常表示モード
+                    li.innerHTML = `
+                        <div class="flex items-center gap-3 flex-grow cursor-pointer" onclick="startEdit(${todo.id})">
+                            <button 
+                                onclick="event.stopPropagation(); toggleComplete(${todo.id})" 
+                                class="flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors duration-200 ${todo.completed ? 'bg-sun-400 border-sun-400' : 'border-gray-300 hover:border-sun-400'}"
+                                aria-label="完了切り替え"
+                            >
+                                ${todo.completed ? '<i class="fas fa-check text-white text-xs"></i>' : ''}
+                            </button>
+                            
+                            <span class="text-lg task-text ${todo.completed ? 'completed' : 'text-gray-700'}" title="クリックして編集">
+                                ${escapeHtml(todo.text)}
+                            </span>
+                        </div>
+                        
+                        <button 
+                            onclick="deleteTodo(${todo.id})" 
+                            class="text-gray-300 hover:text-red-400 transition-colors p-2 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                            aria-label="削除"
+                        >
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    `;
+                }
+                
+                todoListEl.appendChild(li);
+            });
+        }
+
+        // XSS対策用エスケープ関数
+        function escapeHtml(unsafe) {
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
